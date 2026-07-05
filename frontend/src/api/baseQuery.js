@@ -5,9 +5,12 @@ import { getAccessToken, setAccessToken, clearAccessToken } from '@/lib/token.js
 const rawBaseQuery = fetchBaseQuery({
   baseUrl: config.apiBaseUrl,
   credentials: 'include', // send refresh cookie
-  prepareHeaders: (headers) => {
+  prepareHeaders: (headers, { getState }) => {
     const token = getAccessToken();
     if (token) headers.set('Authorization', `Bearer ${token}`);
+    // Multi-tenant scope: tell the API which org this request acts on.
+    const orgId = getState()?.org?.activeOrgId;
+    if (orgId) headers.set('x-org-id', orgId);
     return headers;
   },
 });

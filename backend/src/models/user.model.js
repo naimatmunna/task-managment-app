@@ -26,13 +26,8 @@ const userSchema = new Schema(
     avatar: { url: String, publicId: String },
     lastLoginAt: { type: Date },
 
-    // Hashed single-use tokens (raw value is emailed, never stored).
-    passwordResetToken: { type: String, select: false },
-    passwordResetExpires: { type: Date, select: false },
-    emailVerifyToken: { type: String, select: false },
-    emailVerifyExpires: { type: Date, select: false },
-
     // Refresh-token rotation: store hashes of currently-valid refresh tokens.
+    // Email verification and password reset are handled by the Otp model.
     refreshTokenHashes: { type: [String], default: [], select: false },
   },
   {
@@ -45,10 +40,6 @@ const userSchema = new Schema(
         delete ret.__v;
         delete ret.password;
         delete ret.refreshTokenHashes;
-        delete ret.passwordResetToken;
-        delete ret.passwordResetExpires;
-        delete ret.emailVerifyToken;
-        delete ret.emailVerifyExpires;
         return ret;
       },
     },

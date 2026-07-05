@@ -1,19 +1,38 @@
 import { apiSlice } from '@/api/apiSlice.js';
 import { setAccessToken, clearAccessToken } from '@/lib/token.js';
 import { setCredentials, clearCredentials } from './authSlice.js';
+import { setMemberships, clearOrg } from '@/features/org/orgSlice.js';
+
+/** Shared handler: on a successful auth response, hydrate token + user + orgs. */
+const onAuthSuccess = async (_arg, { dispatch, queryFulfilled }) => {
+  const { data } = await queryFulfilled;
+  const payload = data.data;
+  if (payload?.accessToken) {
+    setAccessToken(payload.accessToken);
+    dispatch(setCredentials(payload.user));
+    dispatch(setMemberships(payload.memberships || []));
+  }
+};
 
 export const authApi = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
+    signup: builder.mutation({
+      query: (body) => ({ url: '/auth/signup', method: 'POST', body }),
+    }),
+    verifyOtp: builder.mutation({
+      query: (body) => ({ url: '/auth/verify-otp', method: 'POST', body }),
+      onQueryStarted: onAuthSuccess,
+    }),
+    verifyLoginOtp: builder.mutation({
+      query: (body) => ({ url: '/auth/verify-login-otp', method: 'POST', body }),
+      onQueryStarted: onAuthSuccess,
+    }),
+    resendOtp: builder.mutation({
+      query: (body) => ({ url: '/auth/resend-otp', method: 'POST', body }),
+    }),
     login: builder.mutation({
       query: (body) => ({ url: '/auth/login', method: 'POST', body }),
-      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
-        const { data } = await queryFulfilled;
-        setAccessToken(data.data.accessToken);
-        dispatch(setCredentials(data.data.user));
-      },
-    }),
-    register: builder.mutation({
-      query: (body) => ({ url: '/auth/register', method: 'POST', body }),
+      onQueryStarted: onAuthSuccess,
     }),
     logout: builder.mutation({
       query: () => ({ url: '/auth/logout', method: 'POST' }),
@@ -23,6 +42,7 @@ export const authApi = apiSlice.injectEndpoints({
         } finally {
           clearAccessToken();
           dispatch(clearCredentials());
+          dispatch(clearOrg());
           dispatch(apiSlice.util.resetApiState());
         }
       },
@@ -34,8 +54,10 @@ export const authApi = apiSlice.injectEndpoints({
         try {
           const { data } = await queryFulfilled;
           dispatch(setCredentials(data.data.user));
+          dispatch(setMemberships(data.data.memberships || []));
         } catch {
           dispatch(clearCredentials());
+          dispatch(clearOrg());
         }
       },
     }),
@@ -45,10 +67,21 @@ export const authApi = apiSlice.injectEndpoints({
     resetPassword: builder.mutation({
       query: (body) => ({ url: '/auth/reset-password', method: 'POST', body }),
     }),
+    changePassword: builder.mutation({
+      query: (body) => ({ url: '/auth/change-password', method: 'POST', body }),
+    }),
   }),
 });
 
 export const {
-  useLoginMutation, useRegisterMutation, useLogoutMutation, useMeQuery,
-  useForgotPasswordMutation, useResetPasswordMutation,
+  useSignupMutation,
+  useVerifyOtpMutation,
+  useVerifyLoginOtpMutation,
+  useResendOtpMutation,
+  useLoginMutation,
+  useLogoutMutation,
+  useMeQuery,
+  useForgotPasswordMutation,
+  useResetPasswordMutation,
+  useChangePasswordMutation,
 } = authApi;

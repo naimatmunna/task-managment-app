@@ -19,20 +19,6 @@ class UserRepository extends BaseRepository {
   findByIdWithSecret(id) {
     return this.model.findById(id).select('+password +refreshTokenHashes').exec();
   }
-
-  findByResetToken(hashedToken) {
-    return this.model
-      .findOne({ passwordResetToken: hashedToken, passwordResetExpires: { $gt: new Date() } })
-      .select('+passwordResetToken +passwordResetExpires')
-      .exec();
-  }
-
-  findByVerifyToken(hashedToken) {
-    return this.model
-      .findOne({ emailVerifyToken: hashedToken, emailVerifyExpires: { $gt: new Date() } })
-      .select('+emailVerifyToken +emailVerifyExpires')
-      .exec();
-  }
 }
 
 export default new UserRepository();

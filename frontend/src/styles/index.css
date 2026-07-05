@@ -4,6 +4,18 @@
 
 :root {
   color-scheme: light dark;
+  /* Semantic tokens (space-separated RGB → Tailwind alpha friendly). */
+  --brand: 106 79 230; /* brand-600 */
+  --canvas: 248 247 246; /* warm porcelain */
+  --surface: 255 255 255;
+  --ring: 106 79 230;
+}
+
+.dark {
+  --brand: 131 107 241; /* brand-500 reads better on dark */
+  --canvas: 18 17 16;
+  --surface: 27 25 23;
+  --ring: 131 107 241;
 }
 
 html,
@@ -13,5 +25,154 @@ body,
 }
 
 body {
-  @apply bg-gray-50 text-gray-900 antialiased dark:bg-gray-950 dark:text-gray-100;
+  @apply bg-gray-50 font-sans text-gray-900 antialiased dark:bg-gray-950 dark:text-gray-100;
+  /* Signature: a whisper of iris light bleeding in from the corners. */
+  background-image:
+    radial-gradient(60rem 30rem at 100% -10%, rgb(106 79 230 / 0.05), transparent 60%),
+    radial-gradient(50rem 26rem at -10% 8%, rgb(106 79 230 / 0.04), transparent 55%);
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  letter-spacing: -0.006em;
+}
+
+.dark body {
+  background-image:
+    radial-gradient(60rem 30rem at 100% -10%, rgb(131 107 241 / 0.08), transparent 60%),
+    radial-gradient(50rem 26rem at -10% 8%, rgb(131 107 241 / 0.06), transparent 55%);
+}
+
+/* Headings: tighter optical tracking + strong weight for hierarchy. */
+h1,
+h2,
+h3,
+h4 {
+  @apply font-semibold text-gray-900 dark:text-gray-50;
+  letter-spacing: -0.018em;
+}
+
+/* Tabular numerals for tables & metrics (Apple-grade number alignment). */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+}
+
+/* Text selection uses the brand tint. */
+::selection {
+  background: rgb(var(--brand) / 0.18);
+}
+
+/* Consistent, visible focus ring for keyboard users (WCAG). */
+:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px rgb(var(--surface)),
+    0 0 0 4px rgb(var(--ring) / 0.55);
+  border-radius: 0.5rem;
+}
+
+/* Signature app canvas + auth backgrounds (applied on layout roots). */
+.bg-app {
+  background-color: rgb(var(--canvas));
+  background-image:
+    radial-gradient(55rem 28rem at 100% -8%, rgb(106 79 230 / 0.05), transparent 60%),
+    radial-gradient(46rem 24rem at -8% 6%, rgb(106 79 230 / 0.035), transparent 55%);
+  background-attachment: fixed;
+}
+.dark .bg-app {
+  background-image:
+    radial-gradient(55rem 28rem at 100% -8%, rgb(131 107 241 / 0.08), transparent 60%),
+    radial-gradient(46rem 24rem at -8% 6%, rgb(131 107 241 / 0.06), transparent 55%);
+}
+
+.bg-auth {
+  background-color: rgb(var(--canvas));
+  background-image:
+    radial-gradient(42rem 28rem at 12% -6%, rgb(106 79 230 / 0.14), transparent 58%),
+    radial-gradient(38rem 26rem at 100% 0%, rgb(131 107 241 / 0.12), transparent 55%),
+    radial-gradient(46rem 30rem at 60% 118%, rgb(106 79 230 / 0.1), transparent 60%);
+}
+.dark .bg-auth {
+  background-image:
+    radial-gradient(42rem 28rem at 12% -6%, rgb(131 107 241 / 0.16), transparent 58%),
+    radial-gradient(38rem 26rem at 100% 0%, rgb(106 79 230 / 0.14), transparent 55%),
+    radial-gradient(46rem 30rem at 60% 118%, rgb(131 107 241 / 0.1), transparent 60%);
+}
+
+/* Custom chevron for native selects (spaces in the SVG make this awkward as a
+   Tailwind arbitrary value, so it lives here as a real utility). */
+.select-field {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' fill='none' viewBox='0 0 24 24' stroke='%2379746e' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.6rem center;
+  background-size: 1.15rem;
+}
+
+/* Frosted surface used by sticky headers / popovers. */
+.glass {
+  background-color: rgb(255 255 255 / 0.72);
+  backdrop-filter: saturate(1.6) blur(12px);
+  -webkit-backdrop-filter: saturate(1.6) blur(12px);
+}
+.dark .glass {
+  background-color: rgb(27 25 23 / 0.72);
+}
+
+/* Frosted translucent chips (status / priority / role badges). The tint, text
+   and ring come from utility classes; this adds the glass blur + saturation. */
+.badge-glass {
+  -webkit-backdrop-filter: blur(5px) saturate(1.7);
+  backdrop-filter: blur(5px) saturate(1.7);
+}
+
+/* Subtle, unobtrusive scrollbars in warm neutrals. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(168 163 157 / 0.5) transparent;
+}
+*::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+*::-webkit-scrollbar-thumb {
+  @apply rounded-full;
+  background-color: rgb(168 163 157 / 0.45);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background-color: rgb(168 163 157 / 0.7);
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Skeleton shimmer. */
+.skeleton {
+  @apply relative overflow-hidden bg-gray-200/70 dark:bg-gray-800/70;
+}
+.skeleton::after {
+  content: '';
+  @apply absolute inset-0 -translate-x-full;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.45), transparent);
+  animation: shimmer 1.4s infinite;
+}
+.dark .skeleton::after {
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.06), transparent);
+}
+
+/* Respect reduced-motion: strip animation/transition for those who ask. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }

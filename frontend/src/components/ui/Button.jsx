@@ -1,14 +1,23 @@
 import { cn } from '@/lib/classNames.js';
 
 const VARIANTS = {
-  primary: 'bg-brand-600 text-white hover:bg-brand-700 focus:ring-brand-500',
+  primary:
+    'bg-brand-600 text-white shadow-sm hover:bg-brand-700 hover:shadow-glow active:bg-brand-700',
   secondary:
-    'bg-gray-100 text-gray-900 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-100 dark:hover:bg-gray-600',
-  danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500',
-  ghost: 'bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800',
+    'bg-white text-gray-700 ring-1 ring-inset ring-gray-200 shadow-xs hover:bg-gray-50 hover:ring-gray-300 dark:bg-gray-800 dark:text-gray-100 dark:ring-white/10 dark:hover:bg-gray-700',
+  subtle:
+    'bg-brand-50 text-brand-700 hover:bg-brand-100 dark:bg-brand-500/15 dark:text-brand-300 dark:hover:bg-brand-500/25',
+  danger:
+    'bg-danger-600 text-white shadow-sm hover:bg-danger-700 active:bg-danger-700',
+  ghost:
+    'bg-transparent text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800',
 };
 
-const SIZES = { sm: 'px-3 py-1.5 text-sm', md: 'px-4 py-2', lg: 'px-6 py-3 text-lg' };
+const SIZES = {
+  sm: 'h-8 gap-1.5 px-3 text-sm',
+  md: 'h-10 gap-2 px-4 text-sm',
+  lg: 'h-11 gap-2 px-5 text-base',
+};
 
 export default function Button({
   variant = 'primary',
@@ -23,8 +32,9 @@ export default function Button({
     <button
       disabled={disabled || isLoading}
       className={cn(
-        'inline-flex items-center justify-center gap-2 rounded-lg font-medium transition',
-        'focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed',
+        'inline-flex select-none items-center justify-center rounded-xl font-medium',
+        'transition-all duration-150 ease-smooth focus:outline-none active:scale-[0.98]',
+        'disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100',
         VARIANTS[variant],
         SIZES[size],
         className,

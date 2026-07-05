@@ -13,20 +13,26 @@ export default function Modal({ open, onClose, title, children }) {
     <AnimatePresence>
       {open && (
         <motion.div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/40 p-4 backdrop-blur-sm"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
+          transition={{ duration: 0.15 }}
           onClick={onClose}
         >
           <motion.div
-            className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl dark:bg-gray-800"
-            initial={{ scale: 0.95, y: 10 }}
-            animate={{ scale: 1, y: 0 }}
-            exit={{ scale: 0.95, y: 10 }}
+            className="w-full max-w-md rounded-2xl border border-gray-200/70 bg-white p-6 shadow-pop dark:border-white/10 dark:bg-gray-900"
+            initial={{ scale: 0.96, y: 12, opacity: 0 }}
+            animate={{ scale: 1, y: 0, opacity: 1 }}
+            exit={{ scale: 0.97, y: 8, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 380, damping: 30 }}
             onClick={(e) => e.stopPropagation()}
           >
-            {title && <h2 className="mb-4 text-lg font-semibold">{title}</h2>}
+            {title && (
+              <h2 className="mb-4 text-lg font-semibold tracking-tight text-gray-900 dark:text-gray-50">
+                {title}
+              </h2>
+            )}
             {children}
           </motion.div>
         </motion.div>

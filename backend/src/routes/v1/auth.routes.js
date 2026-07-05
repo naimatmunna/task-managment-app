@@ -4,29 +4,37 @@ import { validate } from '../../middlewares/validate.js';
 import { authenticate } from '../../middlewares/authenticate.js';
 import { authLimiter } from '../../middlewares/rateLimiter.js';
 import {
-  registerSchema, loginSchema, forgotPasswordSchema,
-  resetPasswordSchema, verifyEmailSchema, changePasswordSchema,
+  signupSchema,
+  verifyOtpSchema,
+  resendOtpSchema,
+  loginSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
+  changePasswordSchema,
 } from '../../validators/auth.validator.js';
 
 const router = Router();
 
 /**
  * @openapi
- * /auth/register:
+ * /auth/signup:
  *   post:
  *     tags: [Auth]
- *     summary: Register a new user
+ *     summary: Create an account + organization and email a verification OTP
  *     security: []
  *     responses:
- *       201: { description: Registered }
+ *       201: { description: Account created; OTP sent }
  */
-router.post('/register', authLimiter, validate(registerSchema), authController.register);
+router.post('/signup', authLimiter, validate(signupSchema), authController.signup);
+router.post('/verify-otp', authLimiter, validate(verifyOtpSchema), authController.verifyOtp);
+router.post('/verify-login-otp', authLimiter, validate(verifyOtpSchema), authController.verifyLoginOtp);
+router.post('/resend-otp', authLimiter, validate(resendOtpSchema), authController.resendOtp);
 router.post('/login', authLimiter, validate(loginSchema), authController.login);
 router.post('/refresh', authController.refresh);
 router.post('/forgot-password', authLimiter, validate(forgotPasswordSchema), authController.forgotPassword);
 router.post('/reset-password', authLimiter, validate(resetPasswordSchema), authController.resetPassword);
-router.post('/verify-email', validate(verifyEmailSchema), authController.verifyEmail);
 
+// Authenticated
 router.use(authenticate);
 router.get('/me', authController.me);
 router.post('/logout', authController.logout);

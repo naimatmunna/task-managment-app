@@ -15,9 +15,13 @@ export const apiLimiter = rateLimit({
   ...base,
 });
 
-/** Stricter limiter for auth endpoints to slow brute-force attempts. */
+/**
+ * Stricter limiter for auth endpoints to slow brute-force / OTP-guessing.
+ * ~1 minute window; a handful of tries per IP is enough for a legit multi-step
+ * signup→verify flow while throttling automated attacks.
+ */
 export const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
+  windowMs: 60 * 1000,
   max: 10,
   ...base,
 });

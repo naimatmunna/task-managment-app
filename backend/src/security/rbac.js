@@ -14,7 +14,10 @@ export const ROLE_PERMISSIONS = Object.freeze({
     P.AUDIT_READ, P.SETTINGS_READ, P.SETTINGS_UPDATE,
   ],
   [ROLES.MANAGER]: [P.USER_READ, P.USER_UPDATE, P.SETTINGS_READ],
-  [ROLES.USER]: [P.USER_READ],
+  // Base role for normal signups. Intentionally holds NO platform permissions:
+  // all product access (teams, tasks, members) is authorized per-organization
+  // via Membership.role, so a normal user must never touch the global /users API.
+  [ROLES.USER]: [],
 });
 
 export const getPermissionsForRoles = (roles = []) => {

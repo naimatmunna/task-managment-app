@@ -1,6 +1,6 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { forgotPasswordSchema } from '@/schemas/auth.schema.js';
 import { useForgotPasswordMutation } from '@/features/auth/authApi.js';
@@ -11,15 +11,19 @@ import Button from '@/components/ui/Button.jsx';
 import PageMeta from '@/components/common/PageMeta.jsx';
 
 export default function ForgotPassword() {
-  const { register, handleSubmit, formState: { errors } } = useForm({
-    resolver: zodResolver(forgotPasswordSchema),
-  });
-  const [forgot, { isLoading, isSuccess }] = useForgotPasswordMutation();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm({ resolver: zodResolver(forgotPasswordSchema) });
+  const [forgot, { isLoading }] = useForgotPasswordMutation();
+  const navigate = useNavigate();
 
-  const onSubmit = async (values) => {
+  const onSubmit = async ({ email }) => {
     try {
-      await forgot(values).unwrap();
-      toast.success('If the account exists, a reset link was sent');
+      await forgot({ email }).unwrap();
+      toast.success('If that account exists, a reset code has been sent.');
+      navigate(ROUTES.RESET_PASSWORD, { state: { email } });
     } catch (err) {
       toast.error(getApiErrorMessage(err));
     }
@@ -27,21 +31,18 @@ export default function ForgotPassword() {
 
   return (
     <>
-      <PageMeta title="Forgot password" />
-      <h1 className="mb-6 text-2xl font-bold">Reset your password</h1>
-      {isSuccess ? (
-        <p className="text-sm text-gray-600 dark:text-gray-400">
-          Check your inbox for a reset link.
-        </p>
-      ) : (
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <Input label="Email" type="email" id="email" error={errors.email?.message} {...register('email')} />
-          <Button type="submit" isLoading={isLoading} className="w-full">
-            Send reset link
-          </Button>
-        </form>
-      )}
-      <p className="mt-4 text-center text-sm">
+      <PageMeta title="Reset password" />
+      <h1 className="text-2xl font-bold tracking-tight">Forgot password?</h1>
+      <p className="mt-1 mb-6 text-sm text-gray-500 dark:text-gray-400">
+        Enter your email and we&apos;ll send you a reset code.
+      </p>
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <Input label="Email" type="email" id="email" autoComplete="email" error={errors.email?.message} {...register('email')} />
+        <Button type="submit" isLoading={isLoading} className="w-full">
+          Send reset code
+        </Button>
+      </form>
+      <p className="mt-5 text-center text-sm">
         <Link to={ROUTES.LOGIN} className="text-brand-600 hover:underline">
           Back to sign in
         </Link>

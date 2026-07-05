@@ -1,11 +1,15 @@
 import nodemailer from 'nodemailer';
 import config from '../config/index.js';
 import logger from '../utils/logger.js';
+import { OTP_PURPOSE } from '../constants/otp.js';
 
 /**
  * Email service with graceful degradation:
  * - If SMTP is configured, sends via nodemailer.
- * - Otherwise logs the message (dev) so flows work without a mail server.
+ * - Otherwise logs the message (and any OTP code) so flows work in dev without
+ *   a mail server. In dev, the API also returns the code in the response body.
+ *
+ * All messages share one branded HTML shell (`wrap`) for a consistent look.
  */
 class EmailService {
   constructor() {
@@ -20,7 +24,30 @@ class EmailService {
     }
   }
 
-  async send({ to, subject, html, text }) {
+  get enabled() {
+    return Boolean(this.transporter);
+  }
+
+  /** Branded HTML shell. `body` is trusted internal markup, never user input verbatim. */
+  wrap(title, body) {
+    return `
+  <div style="background:#f4f5f7;padding:32px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,sans-serif;">
+    <div style="max-width:480px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #eceef1;">
+      <div style="padding:24px 32px;border-bottom:1px solid #f0f1f3;">
+        <span style="font-size:18px;font-weight:700;color:#4f46e5;">${config.appName}</span>
+      </div>
+      <div style="padding:32px;color:#1f2430;font-size:15px;line-height:1.6;">
+        <h1 style="margin:0 0 16px;font-size:20px;color:#111827;">${title}</h1>
+        ${body}
+      </div>
+      <div style="padding:20px 32px;border-top:1px solid #f0f1f3;color:#9aa2ad;font-size:12px;">
+        ${config.appName} · This is an automated message, please do not reply.
+      </div>
+    </div>
+  </div>`;
+  }
+
+  async send({ to, subject, html, text, attachments }) {
     if (!this.transporter) {
       logger.warn(`[email:noop] to=${to} subject="${subject}" (SMTP not configured)`);
       return { queued: false, noop: true };
@@ -31,26 +58,84 @@ class EmailService {
       subject,
       html,
       text,
+      attachments,
     });
     logger.info(`Email sent: ${info.messageId} -> ${to}`);
     return { queued: true, messageId: info.messageId };
   }
 
-  sendVerificationEmail(to, token) {
-    const url = `${config.clientUrl}/verify-email?token=${token}`;
+  sendOtpEmail(to, code, purpose = OTP_PURPOSE.SIGNUP) {
+    const intent = {
+      [OTP_PURPOSE.SIGNUP]: 'confirm your email address',
+      [OTP_PURPOSE.LOGIN]: 'finish signing in',
+      [OTP_PURPOSE.RESET]: 'reset your password',
+    }[purpose];
+
+    if (!this.enabled) {
+      logger.info(`[otp] to=${to} purpose=${purpose} code=${code}`);
+    }
+
     return this.send({
       to,
-      subject: 'Verify your email',
-      html: `<p>Welcome! Verify your account:</p><p><a href="${url}">${url}</a></p>`,
+      subject: `Your ${config.appName} verification code: ${code}`,
+      html: this.wrap(
+        'Verification code',
+        `<p>Use the code below to ${intent}. It expires in ${config.otp.expiresMin} minutes.</p>
+         <div style="margin:24px 0;text-align:center;">
+           <span style="display:inline-block;font-size:32px;letter-spacing:10px;font-weight:700;
+             color:#111827;background:#f4f5f7;border-radius:12px;padding:16px 24px;">${code}</span>
+         </div>
+         <p style="color:#6b7280;font-size:13px;">If you didn't request this, you can safely ignore this email.</p>`,
+      ),
+      text: `Your ${config.appName} code is ${code} (expires in ${config.otp.expiresMin} minutes).`,
     });
   }
 
-  sendPasswordResetEmail(to, token) {
-    const url = `${config.clientUrl}/reset-password?token=${token}`;
+  sendInviteEmail(to, { token, organizationName, inviterName }) {
+    const url = `${config.clientUrl}/accept-invite?token=${token}`;
+    if (!this.enabled) {
+      logger.info(`[invite] to=${to} org="${organizationName}" url=${url}`);
+    }
     return this.send({
       to,
-      subject: 'Reset your password',
-      html: `<p>Reset your password (valid 15 min):</p><p><a href="${url}">${url}</a></p>`,
+      subject: `${inviterName || 'A teammate'} invited you to ${organizationName} on ${config.appName}`,
+      html: this.wrap(
+        `Join ${organizationName}`,
+        `<p>${inviterName || 'A teammate'} has invited you to collaborate on <strong>${organizationName}</strong>.</p>
+         <div style="margin:24px 0;">
+           <a href="${url}" style="display:inline-block;background:#4f46e5;color:#fff;text-decoration:none;
+             padding:12px 22px;border-radius:10px;font-weight:600;">Accept invitation</a>
+         </div>
+         <p style="color:#6b7280;font-size:13px;">Or paste this link into your browser:<br>${url}</p>`,
+      ),
+      text: `You've been invited to ${organizationName}. Accept: ${url}`,
+    });
+  }
+
+  sendTaskAssignedEmail(to, { taskTitle, assignerName, link }) {
+    const url = `${config.clientUrl}${link || '/app/board'}`;
+    return this.send({
+      to,
+      subject: `You were assigned: ${taskTitle}`,
+      html: this.wrap(
+        'New task assigned to you',
+        `<p><strong>${assignerName || 'Someone'}</strong> assigned you a task:</p>
+         <p style="font-size:16px;font-weight:600;color:#111827;margin:16px 0;">${taskTitle}</p>
+         <div style="margin:24px 0;">
+           <a href="${url}" style="display:inline-block;background:#4f46e5;color:#fff;text-decoration:none;
+             padding:12px 22px;border-radius:10px;font-weight:600;">View task</a>
+         </div>`,
+      ),
+      text: `${assignerName || 'Someone'} assigned you the task "${taskTitle}". View: ${url}`,
+    });
+  }
+
+  sendReportEmail(to, { subject, summaryHtml, attachments }) {
+    return this.send({
+      to,
+      subject,
+      html: this.wrap('Your report is ready', summaryHtml),
+      attachments,
     });
   }
 }

@@ -1,18 +1,18 @@
 /**
- * Idempotent database seeder.
- *   npm run seed           # insert seed data
- *   npm run seed:destroy   # wipe seed data
+ * Idempotent database seeder for the PropVia demo workspace.
+ *   npm run seed           # create the demo org, users, teams and tasks
+ *   npm run seed:destroy   # remove the demo data
  */
 import { connectDatabase, disconnectDatabase } from '../src/loaders/database.js';
-import { seedUsers, destroyUsers } from '../src/seeders/user.seeder.js';
+import { seedDemo, destroyDemo } from '../src/seeders/demo.seeder.js';
 import logger from '../src/utils/logger.js';
 
 const run = async () => {
   const destroy = process.argv.includes('--destroy');
   await connectDatabase();
   try {
-    if (destroy) await destroyUsers();
-    else await seedUsers();
+    if (destroy) await destroyDemo();
+    else await seedDemo();
     logger.info(destroy ? 'Seed destroy complete' : 'Seed complete');
   } finally {
     await disconnectDatabase();

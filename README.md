@@ -1,71 +1,39 @@
-# MERN Starter
+# PropVia
 
-A production-ready MERN foundation you can drop any product on top of — CRM, ERP, SaaS, e-commerce, internal tools. It ships with the parts every serious app needs and usually gets wrong: real authentication with refresh-token rotation, role + permission based authorization, a clean layered architecture, security hardening, API docs, tests, and Docker/CI.
+A modern, multi-tenant team task-management app — a lean, focused alternative to Jira/Linear/Asana. Built on the MERN stack (MongoDB · Express · React · Node), plain JavaScript (ES modules) end to end.
 
-The backend is verified (integration tests pass against an in-memory MongoDB). The frontend is verified (production build + lint + component test pass).
+Sign up creates your organization, verifies you with an emailed 6-digit code, and drops you into a Kanban board where your team plans, assigns, and ships work. Every byte of data is scoped to an organization — one tenant can never see another's.
 
----
-
-## Table of contents
-
-1. [Stack](#stack)
-2. [Architecture at a glance](#architecture-at-a-glance)
-3. [Quick start](#quick-start)
-4. [Environment variables](#environment-variables)
-5. [Project structure](#project-structure)
-6. [How authentication works](#how-authentication-works)
-7. [How authorization (RBAC) works](#how-authorization-rbac-works)
-8. [Optional infrastructure](#optional-infrastructure)
-9. [Adding a new module](#adding-a-new-module)
-10. [Testing](#testing)
-11. [Docker & deployment](#docker--deployment)
-12. [Seed accounts](#seed-accounts)
-13. [Coding standards](#coding-standards)
+- **Auth:** email + password with a **6-digit OTP** (signup verification, optional login 2FA, password reset). Access/refresh JWTs with refresh-token **rotation + reuse detection**; refresh token in an httpOnly, signed, SameSite cookie.
+- **Multi-tenant:** `Organization` → `Membership` (roles `owner`/`admin`/`member`) → teams, tasks, notifications, reports. Every request resolves an active org (`x-org-id` header) and is authorized against the caller's membership.
+- **Tasks:** Kanban board with drag-and-drop across/within columns (float ordering), a dense filterable/sortable list, quick-add, a task detail panel with inline edits, an activity log, and comments. Filters persist in the URL.
+- **Notifications:** in-app bell with unread count + email when a task is assigned to you.
+- **Reports:** on-demand daily/weekly/monthly summaries by org/team/me — summary cards, charts (status donut, completion trend, workload), and CSV / PDF export or "email me this report".
+- **Design:** Apple-grade, calm UI with light/dark mode, a `⌘K` command palette, skeleton loaders, empty states, optimistic updates, and toasts on every mutation.
 
 ---
 
-## Stack
+## Tech stack
 
-**Backend:** Node.js (ESM) · Express · MongoDB + Mongoose · JWT (access + refresh rotation) · Zod validation · Winston logging · Swagger/OpenAPI · Helmet/CORS/rate-limit/sanitization · Jest + Supertest.
+**Backend** — Node (ESM) · Express · MongoDB + Mongoose · JWT · `bcryptjs` · `zod` validation · `nodemailer` · `helmet`/`cors`/`hpp`/rate-limit/mongo-sanitize · `pdfkit` · Winston · Swagger · Jest + Supertest (in-memory Mongo).
 
-**Frontend:** Vite · React 18 (JavaScript, no TypeScript) · Redux Toolkit + RTK Query · React Router · Tailwind CSS · Framer Motion · React Hook Form + Zod · dark mode · Vitest + Testing Library.
+**Frontend** — Vite · React 18 (JS/JSX) · **Redux Toolkit + RTK Query** (server state, cache, single-flight token refresh) · React Router · Tailwind CSS · `@dnd-kit` (drag-drop) · `recharts` · `framer-motion` · `react-hook-form` + `zod` · `lucide-react` · `date-fns` · `react-hot-toast` · Vitest.
 
-**Infra (optional, graceful):** Redis cache · BullMQ queue · Cloudinary storage · Socket.io. All degrade to in-memory/local defaults when unconfigured.
-
----
-
-## Architecture at a glance
-
-The backend follows a layered, dependency-inward design:
-
-```
-Request
-  → Route (definition + validation + guards)
-    → Controller (HTTP in/out only, no logic)
-      → Service (business rules, orchestration)
-        → Repository (data access; wraps Mongoose)
-          → Model (schema)
-```
-
-Cross-cutting concerns live in dedicated layers: `middlewares/` (auth, validation, rate-limit, error handling), `security/` (sanitization, RBAC), `utils/` (logger, error/response envelopes, tokens), `loaders/` (DB, Swagger, sockets), and graceful-optional `cache/`, `queues/`, `storage/`.
-
-**Why this shape:** controllers stay thin and swappable, business logic is testable without HTTP, and persistence is isolated behind repositories so you can change queries (or even the database) without touching services. Patterns used: **MVC**, **Service layer**, **Repository**, **Factory** (seed/test data), and a **composition root** (`server.js`) that wires everything at boot.
-
-The frontend mirrors this with a **feature-based** structure: each domain (`features/auth`, `features/users`) owns its API endpoints and Redux slice, composed into a single RTK Query cache and store.
+> **Note on a couple of stack choices.** This project extends an existing production-grade MERN scaffold. Two libraries differ from a from-scratch spec, deliberately: **RTK Query** is kept instead of TanStack Query (it already provides caching, tags, optimistic updates and battle-tested transparent token-refresh), and **`bcryptjs`** is kept instead of native `bcrypt` (pure-JS, no native build step). Both are functional equals for this app.
 
 ---
 
 ## Quick start
 
-Prerequisites: Node ≥ 20, npm, and a MongoDB instance (local or Atlas). Docker optional.
+Prerequisites: **Node ≥ 20**, npm, and a **MongoDB** instance (local or Atlas).
 
 ```bash
 # 1. Backend
 cd backend
-cp .env.example .env          # then edit secrets (see below)
+cp .env.example .env          # defaults work for local dev; set MONGO_URI
 npm install
-npm run seed                  # optional: create demo accounts
-npm run dev                   # http://localhost:5000  (docs at /docs)
+npm run seed                  # optional: demo org, users, teams & tasks
+npm run dev                   # http://localhost:5000  (API docs at /docs)
 
 # 2. Frontend (new terminal)
 cd frontend
@@ -74,165 +42,117 @@ npm install
 npm run dev                   # http://localhost:5173
 ```
 
-The Vite dev server proxies `/api` to `http://localhost:5000`, so no CORS setup is needed in development.
+The Vite dev server proxies `/api` → `http://localhost:5000`, so there's no CORS setup in development.
 
-**Or run the whole stack with Docker:**
+**No SMTP? No problem.** If `MAIL_*` is unset, emails (OTP codes, invites, assignment alerts, reports) are logged to the server console instead of sent, and — outside production — OTP codes and invite links are returned in API responses and shown in the UI so you can complete every flow without a mailbox.
 
-```bash
-docker compose up --build     # frontend :8080 · api :5000 · mongo · redis
-```
+---
+
+## Seed accounts
+
+After `npm run seed` (all demo accounts share the password `Password123!`):
+
+| Email | Role in **Acme Inc** |
+|---|---|
+| owner@propvia.app | owner |
+| admin@propvia.app | admin |
+| priya@propvia.app | member |
+| diego@propvia.app | member |
+| emma@propvia.app | member |
+
+The demo org ships with two teams (Engineering, Design) and 15 tasks spread across every status, priority, and assignee. Reset with `npm run seed:destroy`.
 
 ---
 
 ## Environment variables
 
-Every variable is documented inline in `backend/.env.example`. The essentials:
+Everything is documented inline in `backend/.env.example`. Essentials:
 
 | Variable | Required | Purpose |
 |---|---|---|
 | `MONGO_URI` | ✅ | MongoDB connection string |
-| `JWT_ACCESS_SECRET` | ✅ | Signs short-lived access tokens (≥32 chars) |
-| `JWT_REFRESH_SECRET` | ✅ | Signs refresh tokens — **must differ** from access secret |
+| `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET` | ✅ | Sign access / refresh tokens (≥32 chars, **must differ**) |
 | `COOKIE_SECRET` | ✅ | Signs the httpOnly refresh cookie |
-| `CORS_ORIGINS` | — | Comma-separated allowlist (default: Vite dev origin) |
+| `APP_NAME` | — | Brand name in emails (default `PropVia`) |
+| `OTP_LENGTH` / `OTP_EXPIRES_MIN` / `OTP_MAX_ATTEMPTS` | — | OTP tuning (6 digits · 10 min · 5 attempts) |
+| `LOGIN_OTP_ENABLED` | — | Require an email OTP as a 2nd login step (off by default) |
+| `INVITE_EXPIRES_DAYS` | — | Member-invite link lifetime (default 7) |
 | `MAIL_*` | — | SMTP; if unset, emails are logged instead of sent |
-| `REDIS_URL` | — | Enables Redis cache + (with `ENABLE_QUEUE`) BullMQ |
-| `CLOUDINARY_URL` | — | Enables Cloudinary uploads (else local disk) |
-| `ENABLE_SOCKET` | — | Turns on Socket.io |
+| `CORS_ORIGINS` | — | Comma-separated allowlist (default: Vite dev origin) |
 
-Generate secrets with `openssl rand -hex 32`. Config is validated by Zod at boot (`src/config/env.js`) — the process exits immediately on invalid/missing values instead of failing mid-request.
+Frontend: `frontend/.env` needs only `VITE_API_URL` (default `/api/v1`) and `VITE_APP_NAME`.
 
 ---
 
-## Project structure
+## How multi-tenancy works
+
+The security boundary lives in one middleware, `middlewares/resolveOrg.js`:
+
+1. `authenticate` verifies the access token → `req.user`.
+2. `resolveOrg` reads the `x-org-id` header (or falls back to the user's first active org), loads the caller's **active** `Membership`, and attaches `req.orgId` + `req.membership`. No membership → `403`.
+3. Every tenant query filters by `req.orgId`; `requireOrgRole('admin')` gates privileged actions by membership role (owners rank above admins above members).
+
+A user acting on an org they don't belong to gets `403 ORG_ACCESS_DENIED`; a task/team id from another org resolves to `404`. Both are covered by tests.
+
+---
+
+## API overview
+
+REST under `/api/v1`, envelope `{ success, message, data, meta }`. Interactive docs at `/docs`.
 
 ```
-mern-starter/
-├── backend/
-│   ├── src/
-│   │   ├── config/          # env validation + namespaced config
-│   │   ├── constants/       # roles, permissions, messages, http status
-│   │   ├── loaders/         # db, swagger, socket bootstrap
-│   │   ├── middlewares/     # auth, validate, rateLimit, error handler, requestId
-│   │   ├── security/        # sanitization, RBAC role→permission map
-│   │   ├── models/          # Mongoose schemas
-│   │   ├── repositories/    # data access (BaseRepository + per-model)
-│   │   ├── services/        # business logic (auth, token, user, email)
-│   │   ├── controllers/     # thin HTTP handlers
-│   │   ├── validators/      # Zod request schemas
-│   │   ├── routes/v1/       # versioned route definitions (+OpenAPI docs)
-│   │   ├── utils/           # logger, ApiError, ApiResponse, token, crypto, pagination
-│   │   ├── cache/ queues/ storage/   # graceful-optional infra
-│   │   ├── factories/ seeders/       # seed & test data
-│   │   ├── app.js           # Express assembly (side-effect free → testable)
-│   │   ├── server.js        # composition root + graceful shutdown
-│   │   └── cluster.js       # optional multi-core entrypoint
-│   ├── tests/               # Jest + Supertest integration tests
-│   ├── scripts/seed.js
-│   ├── Dockerfile · ecosystem.config.cjs (PM2)
-│   └── .env.example
-├── frontend/
-│   ├── src/
-│   │   ├── api/             # RTK Query base (+ auto token-refresh) & root slice
-│   │   ├── features/        # auth, users, theme (api + slice per feature)
-│   │   ├── store/           # configureStore
-│   │   ├── components/ui/   # Button, Input, Modal, Table, Pagination, …
-│   │   ├── components/common/ # ErrorBoundary, PageMeta, ThemeToggle
-│   │   ├── layouts/         # AuthLayout, DashboardLayout
-│   │   ├── routes/          # AppRouter + guards (Protected/Guest/Role)
-│   │   ├── pages/           # Landing, Login, Register, Dashboard, Users, …
-│   │   ├── hooks/ helpers/ schemas/ lib/ config/
-│   │   └── main.jsx · App.jsx
-│   ├── Dockerfile · nginx.conf
-│   └── .env.example
-├── docker-compose.yml
-├── .github/workflows/ci.yml
-└── README.md
+/auth          signup · verify-otp · resend-otp · login · verify-login-otp · refresh · logout · me
+               forgot-password · reset-password · change-password
+/orgs          POST / (create) · current (get/update) · members (list/invite/:id role/:id remove)
+               invite (peek) · invite/accept
+/teams         CRUD (+ member rosters, admin-gated)
+/tasks         list(+filters,pagination) · board · create · :id (get/update/delete)
+               :id/reorder · :id/comment
+/notifications list · :id/read · read-all
+/reports       GET (range/scope/team) · export?format=csv|pdf · POST email
+/health
 ```
 
-## How authentication works
+Every body/query/param is Zod-validated; list endpoints support filtering, sorting and `?page=&limit=` pagination.
 
-- **Access token** (JWT, ~15 min) is returned in the login response body and held in memory on the client (mirrored to `localStorage` so a refresh survives).
-- **Refresh token** (JWT, ~7 days) is sent as an **httpOnly, signed, SameSite=strict cookie** — never readable by JS, mitigating XSS token theft.
-- **Rotation with reuse detection:** every `/auth/refresh` consumes the presented refresh token's hash and issues a new pair. Only hashes of currently-valid refresh tokens are stored on the user. If a token that was already rotated is presented again (a sign it leaked), **all sessions are revoked**. See `services/token.service.js`.
-- On the client, `api/baseQuery.js` transparently catches a `401`, calls `/auth/refresh` once (single-flight, so concurrent 401s share one refresh), stores the new access token, and retries the original request.
+---
 
-Flows included: register, email verification, login, refresh, logout, forgot/reset password, change password. Password reset and email verification use single-use hashed tokens (raw value emailed, hash stored).
+## Architecture
 
-## How authorization (RBAC) works
+Layered, dependency-inward on the backend — `Route → Controller → Service → Repository → Model` — with cross-cutting concerns in `middlewares/`, `security/`, `utils/`, `loaders/`, and graceful-optional `cache/`, `queues/`, `storage/`. Controllers stay thin (HTTP only); services hold business rules; repositories wrap Mongoose.
 
-Roles (`super_admin`, `admin`, `manager`, `user`) map to granular `resource:action` permissions in `security/rbac.js`. Route handlers gate access with middleware:
+```
+backend/src/
+  config/ constants/ loaders/ middlewares/ security/ utils/
+  models/            Organization · Membership · Team · Task · Otp · Notification · User
+  repositories/      one per model (extend BaseRepository)
+  services/          auth · otp · token · email · org · team · task · notification · report
+  controllers/ validators/ routes/v1/
+  seeders/ scripts/seed.js
 
-```js
-router.post('/', requirePermissions(PERMISSIONS.USER_CREATE), validate(createUserSchema), createUser);
+frontend/src/
+  api/               RTK Query root + baseQuery (auto refresh + x-org-id injection)
+  features/          auth · org · teams · tasks · notifications · reports · theme
+  components/ui/     Button · Input · Select · Modal · Card · Avatar · Badge · EmptyState · Skeleton …
+  components/app/    OrgSwitcher · NotificationBell · CommandPalette · PageHeader
+  components/tasks/  TaskCard · TaskFormModal · TaskDetailPanel · TaskFilters · PriorityBadge
+  hooks/ layouts/ pages/ routes/ schemas/ lib/
 ```
 
-`requireRoles(...)` gates by role; `requirePermissions(...)` gates by permission (preferred — add capabilities without inventing roles). The frontend has a matching `usePermissions()` hook and `<RoleRoute>` guard, but **the server is always the source of truth** — client gating is UX only.
-
-## Optional infrastructure
-
-Redis, BullMQ, Cloudinary, and Socket.io are **graceful-optional**. Each has a clean interface with a zero-config default:
-
-| Feature | Default (no config) | Activated by |
-|---|---|---|
-| Cache (`cache/`) | In-memory Map | `REDIS_URL` |
-| Queue (`queues/`) | Inline await (runs job immediately) | `ENABLE_QUEUE=true` + `REDIS_URL` |
-| Storage (`storage/`) | Local disk `./uploads` | `CLOUDINARY_URL` |
-| Realtime (`loaders/socket.js`) | Off | `ENABLE_SOCKET=true` |
-
-Your feature code calls the same `getCache()`, `dispatch()`, `getStorage()` API regardless — so you develop with nothing installed and scale up by setting env vars.
-
-## Adding a new module
-
-The layers make new resources mechanical. To add e.g. `Product`:
-
-1. **Model** — `models/product.model.js` (Mongoose schema).
-2. **Repository** — `repositories/product.repository.js` extending `BaseRepository` (you get `paginate`, `findById`, CRUD for free).
-3. **Service** — `services/product.service.js` (business rules; call the repository).
-4. **Validator** — `validators/product.validator.js` (Zod schemas for body/query/params).
-5. **Controller** — `controllers/product.controller.js` (thin; use `catchAsync` + `ApiResponse`).
-6. **Routes** — `routes/v1/product.routes.js`, gated with `authenticate` + `requirePermissions`, then register it in `routes/v1/index.js`.
-7. **Permissions** — add `PRODUCT_*` to `constants/permissions.js` and grant them to roles in `security/rbac.js`.
-
-On the frontend: add `features/products/productsApi.js` (inject endpoints into the root API) and pages/components. That's the whole pattern — copy the `user` module as a template.
+---
 
 ## Testing
 
 ```bash
-cd backend  && npm test     # Jest + Supertest, in-memory MongoDB (no external DB needed)
+cd backend  && npm test     # Jest + Supertest, in-memory MongoDB — no external DB needed
 cd frontend && npm test     # Vitest + Testing Library
+cd frontend && npm run build   # production build (also a good integration check)
 ```
 
-Backend integration tests cover the full auth flow (register, duplicate/validation rejection, login, bad credentials, `/me`, refresh rotation), health, and an RBAC denial. `tests/setup.js` spins up `mongodb-memory-server` so tests are hermetic.
-
-## Docker & deployment
-
-- **Local/full stack:** `docker compose up --build` (Mongo + Redis + API + nginx-served frontend).
-- **Backend image:** multi-stage `node:22-alpine`, runs as non-root, includes a healthcheck hitting `/api/v1/health`.
-- **Frontend image:** builds static assets, serves via nginx with SPA fallback and an `/api` proxy.
-- **PM2:** `pm2 start ecosystem.config.cjs --env production` for clustered process management outside containers.
-- **CI:** `.github/workflows/ci.yml` lints + tests the backend and lints + tests + builds the frontend on every push/PR.
-
-## Seed accounts
-
-After `npm run seed` (all password `Password123!`):
-
-| Email | Role |
-|---|---|
-| superadmin@example.com | super_admin |
-| admin@example.com | admin |
-| manager@example.com | manager |
-| user@example.com | user |
-
-## Coding standards
-
-- **ESM** everywhere, Node ≥ 20.
-- **ESLint + Prettier** enforced (configs at each package root).
-- Controllers never contain business logic; services never touch `req`/`res`.
-- All responses use the `ApiResponse` envelope; all thrown errors use `ApiError`.
-- Every request is validated by Zod before reaching a controller.
-- Secrets only via env; config validated at boot.
+Backend integration tests cover the full OTP auth flow, org/member/invite lifecycle, team management, task CRUD + board + reorder + assignment→notification, reports (JSON/CSV/PDF), the demo seeder, and — throughout — **multi-tenant isolation** (cross-org access denied, no data leakage). Run `npm run lint` in either package to check ESLint.
 
 ---
 
-Built as a foundation — delete the `Landing` page, rename the brand, add your modules, and ship.
+## Roadmap (Phase 2 — not built yet)
+
+Comments with @mentions, attachments, subtasks/checklists, recurring tasks, saved views, sprints/milestones, per-org activity feed, Slack/webhooks, calendar view, time tracking, SSO, audit log, BullMQ+Redis queues, and scheduled auto-emailed reports.

@@ -13,7 +13,7 @@ export default defineConfig({
       '/api': { target: 'http://localhost:5000', changeOrigin: true },
     },
   },
-  build: { outDir: 'dist', sourcemap: false },
+  build: { outDir: 'dist', sourcemap: false, chunkSizeWarningLimit: 700 },
   test: {
     environment: 'jsdom',
     globals: true,

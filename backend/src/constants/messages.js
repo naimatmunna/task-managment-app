@@ -1,19 +1,22 @@
 /** Centralized, reusable user-facing messages. No string literals scattered in handlers. */
 export const MESSAGES = Object.freeze({
   AUTH: {
-    REGISTERED: 'Registration successful. Please verify your email.',
+    SIGNED_UP: 'Account created. Enter the code we emailed you to verify.',
     LOGGED_IN: 'Logged in successfully.',
     LOGGED_OUT: 'Logged out successfully.',
     TOKEN_REFRESHED: 'Token refreshed successfully.',
     INVALID_CREDENTIALS: 'Invalid email or password.',
     EMAIL_VERIFIED: 'Email verified successfully.',
+    OTP_SENT: 'A verification code has been sent.',
+    OTP_RESENT: 'A new verification code has been sent.',
     PASSWORD_RESET: 'Password has been reset successfully.',
     PASSWORD_CHANGED: 'Password changed successfully.',
-    RESET_EMAIL_SENT: 'If the account exists, a reset link has been sent.',
+    RESET_EMAIL_SENT: 'If the account exists, a reset code has been sent.',
     UNAUTHORIZED: 'Authentication required.',
     FORBIDDEN: 'You do not have permission to perform this action.',
     TOKEN_EXPIRED: 'Session expired. Please log in again.',
     EMAIL_IN_USE: 'Email is already registered.',
+    EMAIL_NOT_VERIFIED: 'Please verify your email to continue.',
   },
   USER: {
     CREATED: 'User created successfully.',

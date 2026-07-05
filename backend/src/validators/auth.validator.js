@@ -1,13 +1,27 @@
 import { z } from 'zod';
+import { OTP_PURPOSE_VALUES } from '../constants/otp.js';
 
 const password = z.string().min(8, 'Password must be at least 8 characters').max(128);
 const email = z.string().email().toLowerCase();
+const code = z.string().regex(/^\d{4,8}$/, 'Enter the numeric code from your email');
 
-export const registerSchema = {
+export const signupSchema = {
   body: z.object({
     name: z.string().min(2).max(120),
     email,
     password,
+    organizationName: z.string().min(2, 'Organization name is required').max(120),
+  }),
+};
+
+export const verifyOtpSchema = {
+  body: z.object({ email, code }),
+};
+
+export const resendOtpSchema = {
+  body: z.object({
+    email,
+    purpose: z.enum(OTP_PURPOSE_VALUES).optional(),
   }),
 };
 
@@ -20,11 +34,7 @@ export const forgotPasswordSchema = {
 };
 
 export const resetPasswordSchema = {
-  body: z.object({ token: z.string().min(10), password }),
-};
-
-export const verifyEmailSchema = {
-  body: z.object({ token: z.string().min(10) }),
+  body: z.object({ email, code, password }),
 };
 
 export const changePasswordSchema = {

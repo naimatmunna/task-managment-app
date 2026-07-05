@@ -5,10 +5,15 @@ export const loginSchema = z.object({
   password: z.string().min(1, 'Password is required'),
 });
 
-export const registerSchema = z.object({
+export const signupSchema = z.object({
   name: z.string().min(2, 'Name is too short'),
+  organizationName: z.string().min(2, 'Organization name is required'),
   email: z.string().email('Enter a valid email'),
   password: z.string().min(8, 'At least 8 characters'),
+});
+
+export const otpSchema = z.object({
+  code: z.string().regex(/^\d{4,8}$/, 'Enter the code from your email'),
 });
 
 export const forgotPasswordSchema = z.object({
@@ -16,5 +21,6 @@ export const forgotPasswordSchema = z.object({
 });
 
 export const resetPasswordSchema = z.object({
+  code: z.string().regex(/^\d{4,8}$/, 'Enter the code from your email'),
   password: z.string().min(8, 'At least 8 characters'),
 });

@@ -14,6 +14,7 @@ const schema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PORT: z.coerce.number().int().positive().default(5000),
   API_PREFIX: z.string().default('/api'),
+  APP_NAME: z.string().default('PropVia'),
 
   MONGO_URI: z.string().min(1, 'MONGO_URI is required'),
 
@@ -42,6 +43,13 @@ const schema = z.object({
   RATE_LIMIT_WINDOW_MS: z.coerce.number().default(15 * 60 * 1000),
   RATE_LIMIT_MAX: z.coerce.number().default(100),
   CLIENT_URL: z.string().default('http://localhost:5173'),
+
+  // Auth / OTP tuning
+  OTP_LENGTH: z.coerce.number().int().min(4).max(8).default(6),
+  OTP_EXPIRES_MIN: z.coerce.number().int().positive().default(10),
+  OTP_MAX_ATTEMPTS: z.coerce.number().int().positive().default(5),
+  LOGIN_OTP_ENABLED: boolStr.default('false'), // second-factor email OTP on login (off for MVP)
+  INVITE_EXPIRES_DAYS: z.coerce.number().int().positive().default(7),
 });
 
 const parsed = schema.safeParse(process.env);

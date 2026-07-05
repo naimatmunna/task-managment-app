@@ -13,8 +13,18 @@ const config = Object.freeze({
   port: env.PORT,
   apiPrefix: env.API_PREFIX,
   clientUrl: env.CLIENT_URL,
+  appName: env.APP_NAME,
 
   db: { uri: env.MONGO_URI },
+
+  otp: {
+    length: env.OTP_LENGTH,
+    expiresMin: env.OTP_EXPIRES_MIN,
+    maxAttempts: env.OTP_MAX_ATTEMPTS,
+    loginEnabled: env.LOGIN_OTP_ENABLED,
+  },
+
+  invite: { expiresDays: env.INVITE_EXPIRES_DAYS },
 
   jwt: {
     accessSecret: env.JWT_ACCESS_SECRET,
