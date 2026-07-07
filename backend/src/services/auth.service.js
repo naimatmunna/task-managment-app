@@ -166,8 +166,8 @@ class AuthService {
     await otpService.verify(email, OTP_PURPOSE.RESET, code);
 
     user.password = password;
-    user.refreshTokenHashes = []; // force re-login everywhere
     await user.save();
+    await userRepository.clearRefreshHashes(user.id); // force re-login everywhere
   }
 
   async changePassword({ userId, currentPassword, newPassword }) {
@@ -176,8 +176,8 @@ class AuthService {
       throw ApiError.badRequest('Current password is incorrect', { code: 'BAD_CURRENT_PASSWORD' });
     }
     user.password = newPassword;
-    user.refreshTokenHashes = [];
     await user.save();
+    await userRepository.clearRefreshHashes(user.id);
   }
 
   /** Update the caller's own profile (name / avatar). */

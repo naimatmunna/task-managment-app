@@ -21,12 +21,8 @@ class TokenService {
     const accessToken = signAccessToken(payload);
     const refreshToken = signRefreshToken(payload);
 
-    const doc = await userRepository.findByIdWithSecret(user.id);
-    doc.refreshTokenHashes.push(hashToken(refreshToken));
-    if (doc.refreshTokenHashes.length > MAX_SESSIONS) {
-      doc.refreshTokenHashes = doc.refreshTokenHashes.slice(-MAX_SESSIONS);
-    }
-    await doc.save();
+    // Atomic append + cap; safe under concurrent logins for the same user.
+    await userRepository.pushRefreshHash(user.id, hashToken(refreshToken), MAX_SESSIONS);
 
     return { accessToken, refreshToken };
   }
@@ -45,38 +41,32 @@ class TokenService {
     const user = await userRepository.findByIdWithSecret(payload.sub);
     if (!user || !user.isActive) throw ApiError.unauthorized('Account unavailable');
 
+    // Atomically consume the presented hash. Exactly one concurrent request can
+    // succeed; a second attempt with the same (already-rotated) token removes
+    // nothing => treated as reuse/compromise and all sessions are revoked.
     const presentedHash = hashToken(refreshToken);
-    const index = user.refreshTokenHashes.indexOf(presentedHash);
-
-    // Token not in the valid set => reuse/compromise: revoke all sessions.
-    if (index === -1) {
-      user.refreshTokenHashes = [];
-      await user.save();
+    const consumed = await userRepository.pullRefreshHash(user.id, presentedHash);
+    if (!consumed) {
+      await userRepository.clearRefreshHashes(user.id);
       throw ApiError.unauthorized('Refresh token reuse detected', { code: 'REFRESH_REUSE' });
     }
 
-    // Consume the old hash, mint and store a new pair.
-    user.refreshTokenHashes.splice(index, 1);
+    // Mint and atomically store the new pair.
     const newPair = {
       accessToken: signAccessToken(this.buildPayload(user)),
       refreshToken: signRefreshToken(this.buildPayload(user)),
     };
-    user.refreshTokenHashes.push(hashToken(newPair.refreshToken));
-    await user.save();
+    await userRepository.pushRefreshHash(user.id, hashToken(newPair.refreshToken), MAX_SESSIONS);
 
     return newPair;
   }
 
   async revoke(userId, refreshToken) {
-    const user = await userRepository.findByIdWithSecret(userId);
-    if (!user) return;
     if (refreshToken) {
-      const h = hashToken(refreshToken);
-      user.refreshTokenHashes = user.refreshTokenHashes.filter((x) => x !== h);
+      await userRepository.pullRefreshHash(userId, hashToken(refreshToken));
     } else {
-      user.refreshTokenHashes = [];
+      await userRepository.clearRefreshHashes(userId);
     }
-    await user.save();
   }
 }
 
