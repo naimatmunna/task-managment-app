@@ -1,13 +1,18 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   DndContext,
   DragOverlay,
-  PointerSensor,
+  MouseSensor,
   KeyboardSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   useDroppable,
-  closestCorners,
+  MeasuringStrategy,
+  pointerWithin,
+  rectIntersection,
+  closestCenter,
+  getFirstCollision,
   defaultDropAnimationSideEffects,
 } from '@dnd-kit/core';
 import {
@@ -37,6 +42,10 @@ import { cn } from '@/lib/classNames.js';
 
 const normAssignee = (a) => (a ? { name: a.name, avatar: a.avatar?.url } : null);
 
+// Keep droppables measured continuously so cross-column / empty-column drops
+// stay reliable as the layout shifts mid-drag.
+const measuring = { droppable: { strategy: MeasuringStrategy.Always } };
+
 // Quick, eased settle when a card is dropped — keeps the board feeling snappy.
 const dropAnimation = {
   duration: 180,
@@ -47,18 +56,29 @@ const dropAnimation = {
 };
 
 function SortableCard({ task, onOpen }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id });
-  const style = { transform: CSS.Translate.toString(transform), transition, opacity: isDragging ? 0.4 : 1 };
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: task.id,
+  });
+  const style = {
+    transform: CSS.Translate.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+  };
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      <TaskCard task={task} assignee={normAssignee(task.assigneeId)} team={task.teamId} onClick={() => onOpen(task.id)} />
+      <TaskCard
+        task={task}
+        assignee={normAssignee(task.assigneeId)}
+        team={task.teamId}
+        onClick={() => onOpen(task.id)}
+      />
     </div>
   );
 }
 
 function Column({ column, tasks, onOpen, onAdd }) {
-  // Droppable id IS the status key, so hovering the column body/empty area
-  // resolves straight to the column (no `col:` prefix to decode).
+  // The droppable id IS the status key, so hovering the column body/empty area
+  // resolves straight to the column.
   const { setNodeRef, isOver } = useDroppable({ id: column.key });
   const accent = STATUS_META[column.key]?.color;
   const items = useMemo(() => tasks.map((t) => t.id), [tasks]);
@@ -88,15 +108,16 @@ function Column({ column, tasks, onOpen, onAdd }) {
           <Plus className="h-4 w-4" />
         </button>
       </div>
+      {/* setNodeRef is on the scroll body so the whole column area is a drop target. */}
       <SortableContext id={column.key} items={items} strategy={verticalListSortingStrategy}>
-        <div ref={setNodeRef} className="flex min-h-[60px] flex-1 flex-col gap-2 px-2 pb-3">
+        <div ref={setNodeRef} className="flex min-h-[80px] flex-1 flex-col gap-2 px-2 pb-3">
           {tasks.map((t) => (
             <SortableCard key={t.id} task={t} onOpen={onOpen} />
           ))}
           {tasks.length === 0 && (
             <div
               className={cn(
-                'rounded-xl border-2 border-dashed py-8 text-center text-xs font-medium transition-colors',
+                'flex-1 rounded-xl border-2 border-dashed py-8 text-center text-xs font-medium transition-colors',
                 isOver
                   ? 'border-brand-400 text-brand-500 dark:border-brand-500/50'
                   : 'border-gray-200/80 text-gray-400 dark:border-white/10',
@@ -121,6 +142,10 @@ export default function Board() {
   const [addStatus, setAddStatus] = useState(null);
   const [openTaskId, setOpenTaskId] = useState(null);
 
+  const lastOverId = useRef(null);
+  const recentlyMovedToNewColumn = useRef(false);
+  const dragStart = useRef(null); // { status, order } captured at drag start
+
   // Sync local column state from the server data.
   useEffect(() => {
     const grouped = Object.fromEntries(TASK_COLUMNS.map((c) => [c.key, []]));
@@ -131,10 +156,17 @@ export default function Board() {
     setColumns(grouped);
   }, [tasks]);
 
+  useEffect(() => {
+    requestAnimationFrame(() => {
+      recentlyMovedToNewColumn.current = false;
+    });
+  }, [columns]);
+
   const sensors = useSensors(
-    // Low threshold + tolerance = drag kicks in almost instantly while still
-    // letting a plain click through to open the task.
-    useSensor(PointerSensor, { activationConstraint: { distance: 4, tolerance: 5 } }),
+    // Mouse (desktop): tiny distance so drag engages fast; a plain click still
+    // opens the task. Touch: long-press to drag so scrolling keeps working.
+    useSensor(MouseSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
@@ -148,30 +180,89 @@ export default function Board() {
   const findColumn = useCallback(
     (id) => {
       if (id == null) return null;
-      if (id in columns) return id; // dropped on the column body / empty area
+      if (id in columns) return id; // over the column body / empty area
       return Object.keys(columns).find((key) => columns[key].some((t) => t.id === id)) ?? null;
     },
     [columns],
   );
 
+  // Pointer-first collision detection with sensible fallbacks — always yields a
+  // valid drop target, including empty columns.
+  const collisionDetection = useCallback(
+    (args) => {
+      const pointer = pointerWithin(args);
+      const intersections = pointer.length > 0 ? pointer : rectIntersection(args);
+      let overId = getFirstCollision(intersections, 'id');
+
+      if (overId != null) {
+        // If over a column container, narrow to the closest card inside it.
+        if (overId in columns) {
+          const ids = columns[overId].map((t) => t.id);
+          if (ids.length > 0) {
+            const closest = closestCenter({
+              ...args,
+              droppableContainers: args.droppableContainers.filter(
+                (c) => c.id !== overId && ids.includes(c.id),
+              ),
+            })[0];
+            if (closest) overId = closest.id;
+          }
+        }
+        lastOverId.current = overId;
+        return [{ id: overId }];
+      }
+
+      if (recentlyMovedToNewColumn.current) lastOverId.current = activeId;
+      return lastOverId.current != null ? [{ id: lastOverId.current }] : [];
+    },
+    [activeId, columns],
+  );
+
+  const onDragStart = useCallback(
+    ({ active }) => {
+      setActiveId(active.id);
+      const t = taskById[active.id];
+      dragStart.current = t ? { status: t.status, order: t.order } : null;
+    },
+    [taskById],
+  );
+
   const onDragOver = useCallback(
     ({ active, over }) => {
-      if (!over) return;
+      const overId = over?.id;
+      if (overId == null) return;
       const from = findColumn(active.id);
-      const to = findColumn(over.id);
+      const to = findColumn(overId);
       if (!from || !to || from === to) return;
 
       setColumns((prev) => {
         const fromItems = prev[from];
         const toItems = prev[to];
-        const moving = fromItems.find((t) => t.id === active.id);
-        if (!moving) return prev;
-        const overIndex = toItems.findIndex((t) => t.id === over.id);
-        const insertAt = overIndex >= 0 ? overIndex : toItems.length;
+        const activeIndex = fromItems.findIndex((t) => t.id === active.id);
+        if (activeIndex === -1) return prev;
+        const moving = fromItems[activeIndex];
+
+        let newIndex;
+        if (overId in prev) {
+          newIndex = toItems.length; // dropped over the empty column body
+        } else {
+          const overIndex = toItems.findIndex((t) => t.id === overId);
+          const below =
+            over &&
+            active.rect.current.translated &&
+            active.rect.current.translated.top > over.rect.top + over.rect.height / 2;
+          newIndex = overIndex >= 0 ? overIndex + (below ? 1 : 0) : toItems.length;
+        }
+
+        recentlyMovedToNewColumn.current = true;
         return {
           ...prev,
           [from]: fromItems.filter((t) => t.id !== active.id),
-          [to]: [...toItems.slice(0, insertAt), { ...moving, status: to }, ...toItems.slice(insertAt)],
+          [to]: [
+            ...toItems.slice(0, newIndex),
+            { ...moving, status: to },
+            ...toItems.slice(newIndex),
+          ],
         };
       });
     },
@@ -181,19 +272,25 @@ export default function Board() {
   const onDragEnd = useCallback(
     async ({ active, over }) => {
       setActiveId(null);
-      if (!over) return;
-      const dest = findColumn(over.id);
+      const start = dragStart.current;
+      dragStart.current = null;
+
+      const overId = over?.id;
+      if (overId == null) return;
+      const dest = findColumn(overId);
       if (!dest) return;
 
+      // Finalise ordering within the destination column.
       let items = columns[dest];
-      const oldIndex = items.findIndex((t) => t.id === active.id);
-      const overIndex = items.findIndex((t) => t.id === over.id);
-      if (oldIndex !== -1 && overIndex !== -1 && oldIndex !== overIndex) {
-        items = arrayMove(items, oldIndex, overIndex);
+      const activeIndex = items.findIndex((t) => t.id === active.id);
+      if (activeIndex === -1) return;
+      const overIndex = items.findIndex((t) => t.id === overId);
+      if (overIndex !== -1 && activeIndex !== overIndex) {
+        items = arrayMove(items, activeIndex, overIndex);
         setColumns((prev) => ({ ...prev, [dest]: items }));
       }
 
-      // Compute a float order between the moved card's new neighbours.
+      // Float order strictly between the new neighbours.
       const index = items.findIndex((t) => t.id === active.id);
       const prevOrder = index > 0 ? items[index - 1].order : null;
       const nextOrder = index < items.length - 1 ? items[index + 1].order : null;
@@ -203,17 +300,22 @@ export default function Board() {
       else if (nextOrder == null) order = prevOrder + 1;
       else order = (prevOrder + nextOrder) / 2;
 
-      const task = taskById[active.id];
-      if (task && (task.status !== dest || task.order !== order)) {
-        try {
-          await reorder({ id: active.id, status: dest, order }).unwrap();
-        } catch (err) {
-          toast.error(getApiErrorMessage(err, 'Could not move task'));
-        }
+      // Skip the network call if nothing actually changed.
+      if (start && start.status === dest && start.order === order) return;
+
+      try {
+        await reorder({ id: active.id, status: dest, order }).unwrap();
+      } catch (err) {
+        toast.error(getApiErrorMessage(err, 'Could not move task'));
       }
     },
-    [findColumn, columns, taskById, reorder],
+    [findColumn, columns, reorder],
   );
+
+  const onDragCancel = useCallback(() => {
+    setActiveId(null);
+    dragStart.current = null;
+  }, []);
 
   const activeTask = activeId ? taskById[activeId] : null;
 
@@ -245,15 +347,16 @@ export default function Board() {
           ))}
         </div>
       ) : (
-        <div className={cn('flex gap-4 overflow-x-auto pb-4')}>
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCorners}
-            onDragStart={({ active }) => setActiveId(active.id)}
-            onDragOver={onDragOver}
-            onDragEnd={onDragEnd}
-            onDragCancel={() => setActiveId(null)}
-          >
+        <DndContext
+          sensors={sensors}
+          collisionDetection={collisionDetection}
+          measuring={measuring}
+          onDragStart={onDragStart}
+          onDragOver={onDragOver}
+          onDragEnd={onDragEnd}
+          onDragCancel={onDragCancel}
+        >
+          <div className="flex gap-4 overflow-x-auto pb-4">
             {TASK_COLUMNS.map((column) => (
               <Column
                 key={column.key}
@@ -263,15 +366,20 @@ export default function Board() {
                 onAdd={setAddStatus}
               />
             ))}
-            <DragOverlay dropAnimation={dropAnimation}>
-              {activeTask ? (
-                <div className="rotate-2 cursor-grabbing">
-                  <TaskCard task={activeTask} assignee={normAssignee(activeTask.assigneeId)} team={activeTask.teamId} dragging />
-                </div>
-              ) : null}
-            </DragOverlay>
-          </DndContext>
-        </div>
+          </div>
+          <DragOverlay dropAnimation={dropAnimation}>
+            {activeTask ? (
+              <div className="rotate-2 cursor-grabbing">
+                <TaskCard
+                  task={activeTask}
+                  assignee={normAssignee(activeTask.assigneeId)}
+                  team={activeTask.teamId}
+                  dragging
+                />
+              </div>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
       )}
 
       {addStatus && <TaskFormModal open onClose={() => setAddStatus(null)} defaultStatus={addStatus} />}
