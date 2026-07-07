@@ -1,0 +1,92 @@
+<svg width="900" height="1200" viewBox="0 0 900 1200" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="900" y2="1200" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2a1e63"/>
+      <stop offset="0.5" stop-color="#4834a3"/>
+      <stop offset="1" stop-color="#251b4d"/>
+    </linearGradient>
+    <radialGradient id="glow1" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#836bf1" stop-opacity="0.85"/>
+      <stop offset="1" stop-color="#836bf1" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glow2" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#a293f7" stop-opacity="0.7"/>
+      <stop offset="1" stop-color="#a293f7" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="card" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0.06"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#c1bbfb"/>
+      <stop offset="1" stop-color="#836bf1"/>
+    </linearGradient>
+    <filter id="soft" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+  </defs>
+
+  <!-- Base -->
+  <rect width="900" height="1200" fill="url(#bg)"/>
+
+  <!-- Ambient glows -->
+  <circle cx="720" cy="200" r="360" fill="url(#glow1)"/>
+  <circle cx="120" cy="980" r="340" fill="url(#glow2)"/>
+
+  <!-- Subtle dot grid -->
+  <g fill="#ffffff" fill-opacity="0.10">
+    <g>
+      <circle cx="120" cy="140" r="2.5"/><circle cx="240" cy="140" r="2.5"/><circle cx="360" cy="140" r="2.5"/><circle cx="480" cy="140" r="2.5"/><circle cx="600" cy="140" r="2.5"/><circle cx="720" cy="140" r="2.5"/><circle cx="840" cy="140" r="2.5"/>
+      <circle cx="120" cy="260" r="2.5"/><circle cx="240" cy="260" r="2.5"/><circle cx="360" cy="260" r="2.5"/><circle cx="480" cy="260" r="2.5"/><circle cx="600" cy="260" r="2.5"/><circle cx="720" cy="260" r="2.5"/><circle cx="840" cy="260" r="2.5"/>
+      <circle cx="120" cy="1060" r="2.5"/><circle cx="240" cy="1060" r="2.5"/><circle cx="360" cy="1060" r="2.5"/><circle cx="480" cy="1060" r="2.5"/><circle cx="600" cy="1060" r="2.5"/><circle cx="720" cy="1060" r="2.5"/><circle cx="840" cy="1060" r="2.5"/>
+    </g>
+  </g>
+
+  <!-- Floating glass kanban card 1 -->
+  <g filter="url(#soft)" opacity="0.5">
+    <rect x="150" y="360" width="380" height="150" rx="26" fill="#1b1147"/>
+  </g>
+  <g>
+    <rect x="150" y="350" width="380" height="150" rx="26" fill="url(#card)" stroke="#ffffff" stroke-opacity="0.22"/>
+    <circle cx="196" cy="404" r="18" fill="none" stroke="#c1bbfb" stroke-width="3"/>
+    <path d="M188 404 l6 6 l12 -13" stroke="#c1bbfb" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <rect x="232" y="386" width="240" height="14" rx="7" fill="#ffffff" fill-opacity="0.55"/>
+    <rect x="232" y="414" width="150" height="12" rx="6" fill="#ffffff" fill-opacity="0.28"/>
+    <rect x="180" y="454" width="70" height="22" rx="11" fill="#836bf1" fill-opacity="0.5"/>
+    <rect x="262" y="454" width="90" height="22" rx="11" fill="#ffffff" fill-opacity="0.16"/>
+  </g>
+
+  <!-- Floating glass kanban card 2 (offset, larger) -->
+  <g filter="url(#soft)" opacity="0.5">
+    <rect x="330" y="580" width="420" height="180" rx="28" fill="#1b1147"/>
+  </g>
+  <g>
+    <rect x="330" y="568" width="420" height="180" rx="28" fill="url(#card)" stroke="#ffffff" stroke-opacity="0.22"/>
+    <rect x="366" y="600" width="120" height="16" rx="8" fill="#ffffff" fill-opacity="0.6"/>
+    <rect x="366" y="636" width="348" height="10" rx="5" fill="#ffffff" fill-opacity="0.22"/>
+    <rect x="366" y="658" width="300" height="10" rx="5" fill="#ffffff" fill-opacity="0.22"/>
+    <!-- progress bar -->
+    <rect x="366" y="694" width="348" height="12" rx="6" fill="#ffffff" fill-opacity="0.14"/>
+    <rect x="366" y="694" width="230" height="12" rx="6" fill="url(#accent)"/>
+    <!-- avatars -->
+    <circle cx="676" cy="612" r="16" fill="#836bf1"/>
+    <circle cx="700" cy="612" r="16" fill="#a293f7" stroke="#2a1e63" stroke-width="3"/>
+  </g>
+
+  <!-- Small chip card 3 -->
+  <g>
+    <rect x="200" y="820" width="250" height="96" rx="22" fill="url(#card)" stroke="#ffffff" stroke-opacity="0.2"/>
+    <circle cx="242" cy="868" r="16" fill="none" stroke="#c1bbfb" stroke-width="3"/>
+    <path d="M234 868 l6 6 l12 -13" stroke="#c1bbfb" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <rect x="274" y="854" width="150" height="12" rx="6" fill="#ffffff" fill-opacity="0.5"/>
+    <rect x="274" y="878" width="96" height="10" rx="5" fill="#ffffff" fill-opacity="0.25"/>
+  </g>
+
+  <!-- floating particles -->
+  <g fill="#ffffff">
+    <circle cx="640" cy="470" r="4" fill-opacity="0.5"/>
+    <circle cx="560" cy="820" r="5" fill-opacity="0.4"/>
+    <circle cx="760" cy="900" r="3.5" fill-opacity="0.5"/>
+    <circle cx="300" cy="300" r="3" fill-opacity="0.4"/>
+  </g>
+</svg>

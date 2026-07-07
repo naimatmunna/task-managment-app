@@ -2,11 +2,13 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { Mail } from 'lucide-react';
 import { loginSchema } from '@/schemas/auth.schema.js';
 import { useLoginMutation } from '@/features/auth/authApi.js';
 import { getApiErrorMessage } from '@/helpers/apiError.js';
 import { ROUTES } from '@/constants';
 import Input from '@/components/ui/Input.jsx';
+import PasswordInput from '@/components/ui/PasswordInput.jsx';
 import Button from '@/components/ui/Button.jsx';
 import PageMeta from '@/components/common/PageMeta.jsx';
 
@@ -66,27 +68,31 @@ export default function Login() {
           label="Email"
           type="email"
           id="email"
+          icon={Mail}
+          placeholder="you@company.com"
           autoComplete="email"
           error={errors.email?.message}
           {...register('email')}
         />
         <div>
-          <Input
-            label="Password"
-            type="password"
-            id="password"
-            autoComplete="current-password"
-            error={errors.password?.message}
-            {...register('password')}
-          />
-          <div className="mt-2 text-right">
+          <div className="mb-1.5 flex items-center justify-between">
+            <label htmlFor="password" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Password
+            </label>
             <Link
               to={ROUTES.FORGOT_PASSWORD}
-              className="text-sm text-gray-500 transition-colors hover:text-brand-600 dark:text-gray-400 dark:hover:text-brand-400"
+              className="text-sm font-medium text-brand-600 transition-colors hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-300"
             >
               Forgot password?
             </Link>
           </div>
+          <PasswordInput
+            id="password"
+            placeholder="••••••••"
+            autoComplete="current-password"
+            error={errors.password?.message}
+            {...register('password')}
+          />
         </div>
         <Button type="submit" size="lg" isLoading={isLoading} className="w-full">
           Sign in

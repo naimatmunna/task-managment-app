@@ -54,11 +54,11 @@ After `npm run seed` (all demo accounts share the password `Password123!`):
 
 | Email | Role in **Acme Inc** |
 |---|---|
-| owner@propvia.app | owner |
-| admin@propvia.app | admin |
-| priya@propvia.app | member |
-| diego@propvia.app | member |
-| emma@propvia.app | member |
+| owner@Task Management.app | owner |
+| admin@Task Management.app | admin |
+| priya@Task Management.app | member |
+| diego@Task Management.app | member |
+| emma@Task Management.app | member |
 
 The demo org ships with two teams (Engineering, Design) and 15 tasks spread across every status, priority, and assignee. Reset with `npm run seed:destroy`.
 
@@ -73,7 +73,7 @@ Everything is documented inline in `backend/.env.example`. Essentials:
 | `MONGO_URI` | ✅ | MongoDB connection string |
 | `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET` | ✅ | Sign access / refresh tokens (≥32 chars, **must differ**) |
 | `COOKIE_SECRET` | ✅ | Signs the httpOnly refresh cookie |
-| `APP_NAME` | — | Brand name in emails (default `PropVia`) |
+| `APP_NAME` | — | Brand name in emails (default `Task Management`) |
 | `OTP_LENGTH` / `OTP_EXPIRES_MIN` / `OTP_MAX_ATTEMPTS` | — | OTP tuning (6 digits · 10 min · 5 attempts) |
 | `LOGIN_OTP_ENABLED` | — | Require an email OTP as a 2nd login step (off by default) |
 | `INVITE_EXPIRES_DAYS` | — | Member-invite link lifetime (default 7) |
