@@ -24,7 +24,6 @@ export default function Login() {
   const onSubmit = async (values) => {
     try {
       const res = await login(values).unwrap();
-      // Optional second-factor path.
       if (res.data?.otpRequired) {
         navigate(ROUTES.VERIFY_OTP, {
           state: { email: res.data.email, devCode: res.data.devCode, mode: 'login' },
@@ -34,7 +33,6 @@ export default function Login() {
       toast.success('Welcome back!');
       navigate(from, { replace: true });
     } catch (err) {
-      // Unverified accounts are routed to the OTP screen.
       if (err?.data?.code === 'EMAIL_NOT_VERIFIED') {
         toast('Verify your email to continue.', { icon: '✉️' });
         navigate(ROUTES.VERIFY_OTP, {
@@ -52,33 +50,58 @@ export default function Login() {
 
   return (
     <>
-      <PageMeta title="Sign in" />
-      <h1 className="text-2xl font-bold tracking-tight">Welcome back</h1>
-      <p className="mt-1 mb-6 text-sm text-gray-500 dark:text-gray-400">
-        Sign in to your PropVia workspace.
-      </p>
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <Input label="Email" type="email" id="email" autoComplete="email" error={errors.email?.message} {...register('email')} />
+      <PageMeta
+        title="Sign in"
+        description="Sign in to your workspace to manage tasks, boards, and team projects."
+      />
+      <div className="mb-8">
+        <h1 className="text-3xl font-semibold tracking-tight">Welcome back</h1>
+        <p className="mt-2 text-base text-gray-500 dark:text-gray-400">
+          Sign in to continue to your workspace.
+        </p>
+      </div>
+
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
         <Input
-          label="Password"
-          type="password"
-          id="password"
-          autoComplete="current-password"
-          error={errors.password?.message}
-          {...register('password')}
+          label="Email"
+          type="email"
+          id="email"
+          autoComplete="email"
+          error={errors.email?.message}
+          {...register('email')}
         />
-        <Button type="submit" isLoading={isLoading} className="w-full">
+        <div>
+          <Input
+            label="Password"
+            type="password"
+            id="password"
+            autoComplete="current-password"
+            error={errors.password?.message}
+            {...register('password')}
+          />
+          <div className="mt-2 text-right">
+            <Link
+              to={ROUTES.FORGOT_PASSWORD}
+              className="text-sm text-gray-500 transition-colors hover:text-brand-600 dark:text-gray-400 dark:hover:text-brand-400"
+            >
+              Forgot password?
+            </Link>
+          </div>
+        </div>
+        <Button type="submit" size="lg" isLoading={isLoading} className="w-full">
           Sign in
         </Button>
       </form>
-      <div className="mt-5 flex justify-between text-sm">
-        <Link to={ROUTES.FORGOT_PASSWORD} className="text-brand-600 hover:underline">
-          Forgot password?
+
+      <p className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
+        Don&apos;t have an account?{' '}
+        <Link
+          to={ROUTES.SIGNUP}
+          className="font-medium text-brand-600 transition-colors hover:text-brand-700 hover:underline dark:text-brand-400 dark:hover:text-brand-300"
+        >
+          Create one
         </Link>
-        <Link to={ROUTES.SIGNUP} className="text-brand-600 hover:underline">
-          Create account
-        </Link>
-      </div>
+      </p>
     </>
   );
 }

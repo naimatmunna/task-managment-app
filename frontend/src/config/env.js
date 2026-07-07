@@ -4,7 +4,7 @@
  */
 export const config = Object.freeze({
   apiBaseUrl: import.meta.env.VITE_API_URL || '/api/v1',
-  appName: import.meta.env.VITE_APP_NAME || 'PropVia',
+  appName: import.meta.env.VITE_APP_NAME || 'Nactor',
   isProd: import.meta.env.PROD,
   isDev: import.meta.env.DEV,
 });

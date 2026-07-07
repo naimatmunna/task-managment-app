@@ -31,19 +31,36 @@ export default function ForgotPassword() {
 
   return (
     <>
-      <PageMeta title="Reset password" />
-      <h1 className="text-2xl font-bold tracking-tight">Forgot password?</h1>
-      <p className="mt-1 mb-6 text-sm text-gray-500 dark:text-gray-400">
-        Enter your email and we&apos;ll send you a reset code.
-      </p>
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <Input label="Email" type="email" id="email" autoComplete="email" error={errors.email?.message} {...register('email')} />
-        <Button type="submit" isLoading={isLoading} className="w-full">
+      <PageMeta
+        title="Reset password"
+        description="Reset your password using the verification code sent to your email."
+      />
+      <div className="mb-8">
+        <h1 className="text-3xl font-semibold tracking-tight">Forgot password?</h1>
+        <p className="mt-2 text-base text-gray-500 dark:text-gray-400">
+          Enter your email and we&apos;ll send you a reset code.
+        </p>
+      </div>
+
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+        <Input
+          label="Email"
+          type="email"
+          id="email"
+          autoComplete="email"
+          error={errors.email?.message}
+          {...register('email')}
+        />
+        <Button type="submit" size="lg" isLoading={isLoading} className="w-full">
           Send reset code
         </Button>
       </form>
-      <p className="mt-5 text-center text-sm">
-        <Link to={ROUTES.LOGIN} className="text-brand-600 hover:underline">
+
+      <p className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
+        <Link
+          to={ROUTES.LOGIN}
+          className="font-medium text-brand-600 transition-colors hover:text-brand-700 hover:underline dark:text-brand-400 dark:hover:text-brand-300"
+        >
           Back to sign in
         </Link>
       </p>

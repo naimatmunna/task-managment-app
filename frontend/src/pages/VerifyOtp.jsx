@@ -29,7 +29,6 @@ export default function VerifyOtp() {
   const [verifyLogin, { isLoading: verifyingLogin }] = useVerifyLoginOtpMutation();
   const [resend, { isLoading: resending }] = useResendOtpMutation();
 
-  // Landed here without context — nothing to verify.
   if (!email) return <Navigate to={ROUTES.LOGIN} replace />;
 
   const isLogin = mode === 'login';
@@ -57,17 +56,25 @@ export default function VerifyOtp() {
 
   return (
     <>
-      <PageMeta title="Verify email" />
-      <h1 className="text-2xl font-bold tracking-tight">Enter your code</h1>
-      <p className="mt-1 mb-6 text-sm text-gray-500 dark:text-gray-400">
-        We sent a 6-digit code to <span className="font-medium text-gray-700 dark:text-gray-200">{email}</span>.
-      </p>
+      <PageMeta
+        title="Verify email"
+        description="Enter the verification code sent to your email to complete sign in or registration."
+      />
+      <div className="mb-8">
+        <h1 className="text-3xl font-semibold tracking-tight">Enter your code</h1>
+        <p className="mt-2 text-base text-gray-500 dark:text-gray-400">
+          We sent a 6-digit code to{' '}
+          <span className="font-medium text-gray-700 dark:text-gray-200">{email}</span>.
+        </p>
+      </div>
+
       {devCode && (
-        <div className="mb-4 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:bg-amber-900/20 dark:text-amber-300">
+        <div className="mb-5 rounded-xl border border-amber-200/80 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/20 dark:bg-amber-900/20 dark:text-amber-300">
           Dev mode: your code is <strong>{devCode}</strong> (shown because SMTP isn&apos;t configured).
         </div>
       )}
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
         <Input
           id="code"
           inputMode="numeric"
@@ -77,16 +84,22 @@ export default function VerifyOtp() {
           error={errors.code?.message}
           {...register('code')}
         />
-        <Button type="submit" isLoading={isLoading} className="w-full">
+        <Button type="submit" size="lg" isLoading={isLoading} className="w-full">
           Verify
         </Button>
       </form>
-      <div className="mt-5 text-center text-sm text-gray-500 dark:text-gray-400">
+
+      <p className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
         Didn&apos;t get it?{' '}
-        <button type="button" onClick={onResend} disabled={resending} className="text-brand-600 hover:underline disabled:opacity-50">
+        <button
+          type="button"
+          onClick={onResend}
+          disabled={resending}
+          className="font-medium text-brand-600 transition-colors hover:text-brand-700 hover:underline disabled:opacity-50 dark:text-brand-400 dark:hover:text-brand-300"
+        >
           Resend code
         </button>
-      </div>
+      </p>
     </>
   );
 }

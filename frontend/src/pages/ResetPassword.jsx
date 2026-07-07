@@ -34,32 +34,65 @@ export default function ResetPassword() {
 
   if (!presetEmail) {
     return (
-      <p className="text-center text-sm text-red-600">
-        Start from the{' '}
-        <Link to={ROUTES.FORGOT_PASSWORD} className="text-brand-600 hover:underline">
-          forgot password
-        </Link>{' '}
-        page to receive a code.
-      </p>
+      <>
+        <PageMeta title="Set new password" />
+        <p className="text-center text-sm text-danger-600">
+          Start from the{' '}
+          <Link
+            to={ROUTES.FORGOT_PASSWORD}
+            className="font-medium text-brand-600 hover:underline dark:text-brand-400"
+          >
+            forgot password
+          </Link>{' '}
+          page to receive a code.
+        </p>
+      </>
     );
   }
 
   return (
     <>
-      <PageMeta title="Set new password" />
-      <h1 className="text-2xl font-bold tracking-tight">Set a new password</h1>
-      <p className="mt-1 mb-6 text-sm text-gray-500 dark:text-gray-400">
-        Enter the code sent to <span className="font-medium">{presetEmail}</span> and a new password.
-      </p>
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <Input label="Reset code" id="code" inputMode="numeric" maxLength={6} placeholder="000000" error={errors.code?.message} {...register('code')} />
-        <Input label="New password" type="password" id="password" autoComplete="new-password" error={errors.password?.message} {...register('password')} />
-        <Button type="submit" isLoading={isLoading} className="w-full">
+      <PageMeta
+        title="Set new password"
+        description="Enter your reset code and choose a new password for your account."
+      />
+      <div className="mb-8">
+        <h1 className="text-3xl font-semibold tracking-tight">Set a new password</h1>
+        <p className="mt-2 text-base text-gray-500 dark:text-gray-400">
+          Enter the code sent to{' '}
+          <span className="font-medium text-gray-700 dark:text-gray-200">{presetEmail}</span> and choose a
+          new password.
+        </p>
+      </div>
+
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+        <Input
+          label="Reset code"
+          id="code"
+          inputMode="numeric"
+          maxLength={6}
+          placeholder="000000"
+          error={errors.code?.message}
+          {...register('code')}
+        />
+        <Input
+          label="New password"
+          type="password"
+          id="password"
+          autoComplete="new-password"
+          error={errors.password?.message}
+          {...register('password')}
+        />
+        <Button type="submit" size="lg" isLoading={isLoading} className="w-full">
           Reset password
         </Button>
       </form>
-      <p className="mt-5 text-center text-sm">
-        <Link to={ROUTES.LOGIN} className="text-brand-600 hover:underline">
+
+      <p className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
+        <Link
+          to={ROUTES.LOGIN}
+          className="font-medium text-brand-600 transition-colors hover:text-brand-700 hover:underline dark:text-brand-400 dark:hover:text-brand-300"
+        >
           Back to sign in
         </Link>
       </p>

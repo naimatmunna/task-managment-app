@@ -170,7 +170,7 @@ export default function DashboardLayout() {
           </div>
         </header>
 
-        <main className="mx-auto w-full max-w-7xl flex-1 animate-fade-in px-4 py-6 md:px-8 md:py-8">
+        <main className="mx-auto w-full max-w-full flex-1 animate-fade-in px-4 py-6 md:px-8 md:py-8">
           <Outlet />
         </main>
       </div>

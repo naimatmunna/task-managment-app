@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(node --input-type=module -e ' *)",
+      "Bash(rm -f pages/Register.jsx pages/Users.jsx pages/Dashboard.jsx pages/Landing.jsx routes/guards/RoleRoute.jsx hooks/usePermissions.js features/users/usersApi.js)",
+      "Bash(rmdir features/users)",
+      "Bash(ls features *)",
+      "Bash(taskkill //F //IM node.exe)",
+      "Bash(node _smoke5000.mjs)",
+      "Bash(break)",
+      "Bash(curl -s http://127.0.0.1:5000/api/v1/health)"
+    ]
+  }
+}

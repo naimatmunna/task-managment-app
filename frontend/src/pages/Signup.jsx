@@ -33,21 +33,36 @@ export default function Signup() {
 
   return (
     <>
-      <PageMeta title="Create account" />
-      <h1 className="text-2xl font-bold tracking-tight">Create your workspace</h1>
-      <p className="mt-1 mb-6 text-sm text-gray-500 dark:text-gray-400">
-        Start managing your team&apos;s work in minutes.
-      </p>
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <Input label="Your name" id="name" autoComplete="name" error={errors.name?.message} {...register('name')} />
+      <PageMeta
+        title="Create account"
+        description="Create your workspace and start organizing team tasks in minutes."
+      />
+      <div className="mb-8">
+        <h1 className="text-3xl font-semibold tracking-tight">Create your workspace</h1>
+        <p className="mt-2 text-base text-gray-500 dark:text-gray-400">
+          Set up your organization and invite your team in minutes.
+        </p>
+      </div>
+
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Input label="Your name" id="name" autoComplete="name" error={errors.name?.message} {...register('name')} />
+          <Input
+            label="Organization"
+            id="organizationName"
+            placeholder="Acme Inc"
+            error={errors.organizationName?.message}
+            {...register('organizationName')}
+          />
+        </div>
         <Input
-          label="Organization name"
-          id="organizationName"
-          placeholder="Acme Inc"
-          error={errors.organizationName?.message}
-          {...register('organizationName')}
+          label="Work email"
+          type="email"
+          id="email"
+          autoComplete="email"
+          error={errors.email?.message}
+          {...register('email')}
         />
-        <Input label="Work email" type="email" id="email" autoComplete="email" error={errors.email?.message} {...register('email')} />
         <Input
           label="Password"
           type="password"
@@ -56,13 +71,20 @@ export default function Signup() {
           error={errors.password?.message}
           {...register('password')}
         />
-        <Button type="submit" isLoading={isLoading} className="w-full">
+        <Button type="submit" size="lg" isLoading={isLoading} className="w-full">
           Create account
         </Button>
+        <p className="text-center text-xs leading-relaxed text-gray-400 dark:text-gray-500">
+          By creating an account, you agree to our Terms of Service and Privacy Policy.
+        </p>
       </form>
-      <p className="mt-5 text-center text-sm text-gray-500 dark:text-gray-400">
+
+      <p className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
         Already have an account?{' '}
-        <Link to={ROUTES.LOGIN} className="text-brand-600 hover:underline">
+        <Link
+          to={ROUTES.LOGIN}
+          className="font-medium text-brand-600 transition-colors hover:text-brand-700 hover:underline dark:text-brand-400 dark:hover:text-brand-300"
+        >
           Sign in
         </Link>
       </p>
