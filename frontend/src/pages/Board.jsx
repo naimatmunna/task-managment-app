@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -6,7 +6,9 @@ import {
   KeyboardSensor,
   useSensor,
   useSensors,
+  useDroppable,
   closestCorners,
+  defaultDropAnimationSideEffects,
 } from '@dnd-kit/core';
 import {
   SortableContext,
@@ -35,6 +37,15 @@ import { cn } from '@/lib/classNames.js';
 
 const normAssignee = (a) => (a ? { name: a.name, avatar: a.avatar?.url } : null);
 
+// Quick, eased settle when a card is dropped — keeps the board feeling snappy.
+const dropAnimation = {
+  duration: 180,
+  easing: 'cubic-bezier(0.2, 0, 0, 1)',
+  sideEffects: defaultDropAnimationSideEffects({
+    styles: { active: { opacity: '0.4' } },
+  }),
+};
+
 function SortableCard({ task, onOpen }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id });
   const style = { transform: CSS.Translate.toString(transform), transition, opacity: isDragging ? 0.4 : 1 };
@@ -46,10 +57,20 @@ function SortableCard({ task, onOpen }) {
 }
 
 function Column({ column, tasks, onOpen, onAdd }) {
-  const { setNodeRef } = useSortable({ id: `col:${column.key}`, data: { column: column.key } });
+  // Droppable id IS the status key, so hovering the column body/empty area
+  // resolves straight to the column (no `col:` prefix to decode).
+  const { setNodeRef, isOver } = useDroppable({ id: column.key });
   const accent = STATUS_META[column.key]?.color;
+  const items = useMemo(() => tasks.map((t) => t.id), [tasks]);
   return (
-    <div className="flex w-[19rem] shrink-0 flex-col overflow-hidden rounded-2xl border border-gray-200/60 bg-gray-100/50 dark:border-white/5 dark:bg-gray-900/40">
+    <div
+      className={cn(
+        'flex w-[19rem] shrink-0 flex-col overflow-hidden rounded-2xl border bg-gray-100/50 transition-colors duration-150 dark:bg-gray-900/40',
+        isOver
+          ? 'border-brand-400 ring-2 ring-brand-500/20 dark:border-brand-500/50'
+          : 'border-gray-200/60 dark:border-white/5',
+      )}
+    >
       <div className="h-1" style={{ backgroundColor: accent }} />
       <div className="flex items-center justify-between px-3 py-2.5">
         <span className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-200">
@@ -67,13 +88,20 @@ function Column({ column, tasks, onOpen, onAdd }) {
           <Plus className="h-4 w-4" />
         </button>
       </div>
-      <SortableContext id={column.key} items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+      <SortableContext id={column.key} items={items} strategy={verticalListSortingStrategy}>
         <div ref={setNodeRef} className="flex min-h-[60px] flex-1 flex-col gap-2 px-2 pb-3">
           {tasks.map((t) => (
             <SortableCard key={t.id} task={t} onOpen={onOpen} />
           ))}
           {tasks.length === 0 && (
-            <div className="rounded-xl border-2 border-dashed border-gray-200/80 py-8 text-center text-xs font-medium text-gray-400 dark:border-white/10">
+            <div
+              className={cn(
+                'rounded-xl border-2 border-dashed py-8 text-center text-xs font-medium transition-colors',
+                isOver
+                  ? 'border-brand-400 text-brand-500 dark:border-brand-500/50'
+                  : 'border-gray-200/80 text-gray-400 dark:border-white/10',
+              )}
+            >
               Drop tasks here
             </div>
           )}
@@ -104,7 +132,9 @@ export default function Board() {
   }, [tasks]);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    // Low threshold + tolerance = drag kicks in almost instantly while still
+    // letting a plain click through to open the task.
+    useSensor(PointerSensor, { activationConstraint: { distance: 4, tolerance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
@@ -114,67 +144,76 @@ export default function Board() {
     return map;
   }, [columns]);
 
-  const findColumn = (id) => {
-    if (id in columns) return id;
-    return Object.keys(columns).find((key) => columns[key].some((t) => t.id === id));
-  };
+  // Resolve any droppable id (a column key OR a task id) to its column key.
+  const findColumn = useCallback(
+    (id) => {
+      if (id == null) return null;
+      if (id in columns) return id; // dropped on the column body / empty area
+      return Object.keys(columns).find((key) => columns[key].some((t) => t.id === id)) ?? null;
+    },
+    [columns],
+  );
 
-  const onDragOver = ({ active, over }) => {
-    if (!over) return;
-    const from = findColumn(active.id);
-    const to = columns[over.id] ? over.id : findColumn(over.id);
-    if (!from || !to || from === to) return;
+  const onDragOver = useCallback(
+    ({ active, over }) => {
+      if (!over) return;
+      const from = findColumn(active.id);
+      const to = findColumn(over.id);
+      if (!from || !to || from === to) return;
 
-    setColumns((prev) => {
-      const fromItems = prev[from];
-      const toItems = prev[to];
-      const moving = fromItems.find((t) => t.id === active.id);
-      if (!moving) return prev;
-      const overIndex = toItems.findIndex((t) => t.id === over.id);
-      const insertAt = overIndex >= 0 ? overIndex : toItems.length;
-      return {
-        ...prev,
-        [from]: fromItems.filter((t) => t.id !== active.id),
-        [to]: [...toItems.slice(0, insertAt), { ...moving, status: to }, ...toItems.slice(insertAt)],
-      };
-    });
-  };
+      setColumns((prev) => {
+        const fromItems = prev[from];
+        const toItems = prev[to];
+        const moving = fromItems.find((t) => t.id === active.id);
+        if (!moving) return prev;
+        const overIndex = toItems.findIndex((t) => t.id === over.id);
+        const insertAt = overIndex >= 0 ? overIndex : toItems.length;
+        return {
+          ...prev,
+          [from]: fromItems.filter((t) => t.id !== active.id),
+          [to]: [...toItems.slice(0, insertAt), { ...moving, status: to }, ...toItems.slice(insertAt)],
+        };
+      });
+    },
+    [findColumn],
+  );
 
-  const onDragEnd = async ({ active, over }) => {
-    setActiveId(null);
-    if (!over) return;
-    const dest = columns[over.id] ? over.id : findColumn(over.id);
-    const from = findColumn(active.id);
-    if (!dest) return;
+  const onDragEnd = useCallback(
+    async ({ active, over }) => {
+      setActiveId(null);
+      if (!over) return;
+      const dest = findColumn(over.id);
+      if (!dest) return;
 
-    let items = columns[dest];
-    const oldIndex = items.findIndex((t) => t.id === active.id);
-    const overIndex = items.findIndex((t) => t.id === over.id);
-    if (oldIndex !== -1 && overIndex !== -1 && oldIndex !== overIndex) {
-      items = arrayMove(items, oldIndex, overIndex);
-      setColumns((prev) => ({ ...prev, [dest]: items }));
-    }
-
-    // Compute a float order between the moved card's new neighbours.
-    const index = items.findIndex((t) => t.id === active.id);
-    const prevOrder = index > 0 ? items[index - 1].order : null;
-    const nextOrder = index < items.length - 1 ? items[index + 1].order : null;
-    let order;
-    if (prevOrder == null && nextOrder == null) order = 1;
-    else if (prevOrder == null) order = nextOrder - 1;
-    else if (nextOrder == null) order = prevOrder + 1;
-    else order = (prevOrder + nextOrder) / 2;
-
-    const task = taskById[active.id];
-    if (task && (task.status !== dest || task.order !== order)) {
-      try {
-        await reorder({ id: active.id, status: dest, order }).unwrap();
-      } catch (err) {
-        toast.error(getApiErrorMessage(err, 'Could not move task'));
+      let items = columns[dest];
+      const oldIndex = items.findIndex((t) => t.id === active.id);
+      const overIndex = items.findIndex((t) => t.id === over.id);
+      if (oldIndex !== -1 && overIndex !== -1 && oldIndex !== overIndex) {
+        items = arrayMove(items, oldIndex, overIndex);
+        setColumns((prev) => ({ ...prev, [dest]: items }));
       }
-    }
-    void from;
-  };
+
+      // Compute a float order between the moved card's new neighbours.
+      const index = items.findIndex((t) => t.id === active.id);
+      const prevOrder = index > 0 ? items[index - 1].order : null;
+      const nextOrder = index < items.length - 1 ? items[index + 1].order : null;
+      let order;
+      if (prevOrder == null && nextOrder == null) order = 1;
+      else if (prevOrder == null) order = nextOrder - 1;
+      else if (nextOrder == null) order = prevOrder + 1;
+      else order = (prevOrder + nextOrder) / 2;
+
+      const task = taskById[active.id];
+      if (task && (task.status !== dest || task.order !== order)) {
+        try {
+          await reorder({ id: active.id, status: dest, order }).unwrap();
+        } catch (err) {
+          toast.error(getApiErrorMessage(err, 'Could not move task'));
+        }
+      }
+    },
+    [findColumn, columns, taskById, reorder],
+  );
 
   const activeTask = activeId ? taskById[activeId] : null;
 
@@ -224,9 +263,11 @@ export default function Board() {
                 onAdd={setAddStatus}
               />
             ))}
-            <DragOverlay>
+            <DragOverlay dropAnimation={dropAnimation}>
               {activeTask ? (
-                <TaskCard task={activeTask} assignee={normAssignee(activeTask.assigneeId)} team={activeTask.teamId} dragging />
+                <div className="rotate-2 cursor-grabbing">
+                  <TaskCard task={activeTask} assignee={normAssignee(activeTask.assigneeId)} team={activeTask.teamId} dragging />
+                </div>
               ) : null}
             </DragOverlay>
           </DndContext>
