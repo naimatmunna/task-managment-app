@@ -37,6 +37,7 @@ import Card from '@/components/ui/Card.jsx';
 import Button from '@/components/ui/Button.jsx';
 import Select from '@/components/ui/Select.jsx';
 import Segmented from '@/components/ui/Segmented.jsx';
+import DatePicker from '@/components/ui/DatePicker.jsx';
 import PriorityBadge from '@/components/tasks/PriorityBadge.jsx';
 import Skeleton from '@/components/ui/Skeleton.jsx';
 import { cn } from '@/lib/classNames.js';
@@ -205,23 +206,28 @@ export default function Reports() {
           <div className="flex flex-col gap-1.5">
             <span className="px-1 text-[11px] font-semibold uppercase tracking-wide text-gray-400">Dates</span>
             <div className="flex items-center gap-2">
-              <input
-                type="date"
-                value={filters.from || ''}
-                max={filters.to || undefined}
-                onChange={(e) => setFilter('from', e.target.value)}
-                className="h-9 rounded-lg border border-gray-200 bg-white px-2.5 text-sm shadow-xs focus:border-brand-500 focus:outline-none dark:border-white/10 dark:bg-gray-800/80"
-                aria-label="From date"
-              />
+              <div className="w-36">
+                <DatePicker
+                  size="sm"
+                  placeholder="Start"
+                  value={filters.from || ''}
+                  max={filters.to || undefined}
+                  onChange={(v) => setFilter('from', v)}
+                  aria-label="From date"
+                />
+              </div>
               <span className="text-gray-400">→</span>
-              <input
-                type="date"
-                value={filters.to || ''}
-                min={filters.from || undefined}
-                onChange={(e) => setFilter('to', e.target.value)}
-                className="h-9 rounded-lg border border-gray-200 bg-white px-2.5 text-sm shadow-xs focus:border-brand-500 focus:outline-none dark:border-white/10 dark:bg-gray-800/80"
-                aria-label="To date"
-              />
+              <div className="w-36">
+                <DatePicker
+                  size="sm"
+                  placeholder="End"
+                  align="end"
+                  value={filters.to || ''}
+                  min={filters.from || undefined}
+                  onChange={(v) => setFilter('to', v)}
+                  aria-label="To date"
+                />
+              </div>
             </div>
           </div>
         )}

@@ -40,3 +40,10 @@ export const resetPasswordSchema = {
 export const changePasswordSchema = {
   body: z.object({ currentPassword: z.string().min(1), newPassword: password }),
 };
+
+export const updateProfileSchema = {
+  body: z.object({
+    name: z.string().min(2, 'Name is too short').max(120).optional(),
+    avatarUrl: z.union([z.string().url('Enter a valid image URL'), z.literal(''), z.null()]).optional(),
+  }),
+};

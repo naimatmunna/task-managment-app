@@ -12,6 +12,7 @@ import {
   X,
   Search,
   Sparkles,
+  Rocket,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { config } from '@/config/env.js';
@@ -33,6 +34,7 @@ const NAV = [
   { to: ROUTES.LIST, label: 'List', icon: List },
   { to: ROUTES.TEAMS, label: 'Teams', icon: Users2 },
   { to: ROUTES.REPORTS, label: 'Reports', icon: BarChart3 },
+  { to: ROUTES.RELEASES, label: 'Releases', icon: Rocket },
   { to: ROUTES.MEMBERS, label: 'Members', icon: UserCog },
   { to: ROUTES.SETTINGS, label: 'Settings', icon: Settings, manageOnly: true },
 ];

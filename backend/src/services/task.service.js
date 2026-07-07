@@ -9,6 +9,12 @@ import { TASK_STATUS, TASK_ACTIVITY, TASK_STATUS_VALUES, TASK_PRIORITY_VALUES } 
 const ASSIGNEE_FIELDS = 'name avatar email';
 const TEAM_FIELDS = 'name color';
 
+/** UTC midnight of the current day — the exclusive upper bound for "overdue". */
+const startOfTodayUtc = () => {
+  const n = new Date();
+  return new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate()));
+};
+
 /**
  * Task use-cases, always scoped to req.orgId. Handles Kanban ordering (float
  * `order` so a card can be inserted between two neighbours without renumbering),
@@ -51,8 +57,13 @@ class TaskService {
       filter.$or = [{ title: rx }, { description: rx }];
     }
     if (q.overdue === 'true') {
-      filter.dueDate = { $lt: new Date() };
-      filter.status = { $ne: TASK_STATUS.DONE };
+      // "Overdue" = due on an earlier calendar day and not done. Compare against
+      // the start of today (UTC), matching how due dates are stored (UTC midnight)
+      // so a task due *today* is not counted as overdue.
+      filter.dueDate = { $lt: startOfTodayUtc() };
+      // Don't clobber an explicit status filter (e.g. Status=Todo + Overdue);
+      // only default to "not done" when the caller hasn't chosen a status.
+      if (!filter.status) filter.status = { $ne: TASK_STATUS.DONE };
     } else {
       const due = {};
       if (q.dueAfter) due.$gte = new Date(q.dueAfter);
@@ -97,6 +108,15 @@ class TaskService {
     const filter = this.buildFilter(orgId, q);
     return taskRepository.findAll(filter, {
       sort: { status: 1, order: 1 },
+      populate: this.populate(),
+    });
+  }
+
+  /** All matching tasks (no pagination), newest first — used by exports. */
+  async collect(orgId, q = {}) {
+    const filter = this.buildFilter(orgId, q);
+    return taskRepository.findAll(filter, {
+      sort: { createdAt: -1 },
       populate: this.populate(),
     });
   }

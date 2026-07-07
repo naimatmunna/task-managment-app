@@ -54,6 +54,9 @@ class ReportService {
     });
 
     const now = new Date();
+    // Start of today (UTC) — a task due today is not yet overdue, matching the
+    // task list filter/highlight.
+    const todayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
     const byStatus = Object.fromEntries(TASK_STATUS_VALUES.map((s) => [s, 0]));
     const workload = new Map();
     const trend = new Map();
@@ -69,7 +72,7 @@ class ReportService {
           trend.set(day, (trend.get(day) || 0) + 1);
         }
       }
-      if (t.dueDate && t.status !== TASK_STATUS.DONE && new Date(t.dueDate) < now) overdue += 1;
+      if (t.dueDate && t.status !== TASK_STATUS.DONE && new Date(t.dueDate) < todayStart) overdue += 1;
 
       const key = t.assigneeId ? t.assigneeId.name : 'Unassigned';
       const w = workload.get(key) || { assignee: key, total: 0, completed: 0 };

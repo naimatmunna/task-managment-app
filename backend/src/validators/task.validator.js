@@ -65,3 +65,19 @@ export const listTasksSchema = {
     overdue: z.string().optional(),
   }),
 };
+
+export const exportTasksSchema = {
+  query: z.object({
+    format: z.enum(['pdf', 'docx']).default('pdf'),
+    scopeLabel: z.string().max(200).optional(),
+    status: z.string().optional(),
+    priority: z.string().optional(),
+    assigneeId: z.string().optional(),
+    teamId: z.string().optional(),
+    label: z.string().optional(),
+    search: z.string().optional(),
+    dueBefore: z.string().optional(),
+    dueAfter: z.string().optional(),
+    overdue: z.string().optional(),
+  }),
+};

@@ -10,7 +10,7 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      '/api': { target: 'http://localhost:5000', changeOrigin: true },
+      '/api': { target: 'http://localhost:4040', changeOrigin: true },
     },
   },
   build: { outDir: 'dist', sourcemap: false, chunkSizeWarningLimit: 700 },

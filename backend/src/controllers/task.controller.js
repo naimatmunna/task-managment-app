@@ -1,6 +1,7 @@
 import catchAsync from '../utils/catchAsync.js';
 import ApiResponse from '../utils/ApiResponse.js';
 import taskService from '../services/task.service.js';
+import taskExportService from '../services/taskExport.service.js';
 
 export const listTasks = catchAsync(async (req, res) => {
   const { items, meta } = await taskService.list(req.orgId, req.validatedQuery);
@@ -10,6 +11,25 @@ export const listTasks = catchAsync(async (req, res) => {
 export const boardTasks = catchAsync(async (req, res) => {
   const tasks = await taskService.board(req.orgId, req.validatedQuery);
   return ApiResponse.send(res, { data: { tasks } });
+});
+
+export const exportTasks = catchAsync(async (req, res) => {
+  const { format, scopeLabel, ...filters } = req.validatedQuery;
+  const { org, tasks } = await taskExportService.gather(req.orgId, filters);
+  const meta = { scopeLabel: scopeLabel || 'All tasks', generatedAt: new Date() };
+  const stamp = new Date().toISOString().slice(0, 10);
+
+  if (format === 'docx') {
+    const buffer = await taskExportService.toDocx({ org, tasks, meta });
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+    res.setHeader('Content-Disposition', `attachment; filename="task-list-${stamp}.docx"`);
+    return res.send(buffer);
+  }
+
+  const pdf = await taskExportService.toPdf({ org, tasks, meta });
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename="task-list-${stamp}.pdf"`);
+  return res.send(pdf);
 });
 
 export const getTask = catchAsync(async (req, res) => {

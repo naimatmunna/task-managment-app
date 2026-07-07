@@ -84,7 +84,7 @@ function Column({ column, tasks, onOpen, onAdd }) {
 }
 
 export default function Board() {
-  const { filters, setFilter, clear, activeCount } = useTaskFilters();
+  const { filters, setFilter, setFilters, clear, activeCount } = useTaskFilters();
   const { data: tasks, isLoading } = useBoardQuery(toApiFilters(filters));
   const [reorder] = useReorderTaskMutation();
 
@@ -193,6 +193,7 @@ export default function Board() {
       <TaskFilters
         filters={filters}
         setFilter={setFilter}
+        setFilters={setFilters}
         clear={clear}
         activeCount={activeCount}
         resultCount={tasks?.length}

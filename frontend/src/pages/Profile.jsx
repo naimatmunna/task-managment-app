@@ -4,7 +4,7 @@ import { z } from 'zod';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/hooks/useAuth.js';
 import { useOrg } from '@/hooks/useOrg.js';
-import { useChangePasswordMutation } from '@/features/auth/authApi.js';
+import { useChangePasswordMutation, useUpdateProfileMutation } from '@/features/auth/authApi.js';
 import { getApiErrorMessage } from '@/helpers/apiError.js';
 import { formatDateTime } from '@/helpers/format.js';
 import { ROLE_META } from '@/constants';
@@ -14,8 +14,13 @@ import Card from '@/components/ui/Card.jsx';
 import Input from '@/components/ui/Input.jsx';
 import Button from '@/components/ui/Button.jsx';
 import Badge from '@/components/ui/Badge.jsx';
+import Avatar from '@/components/ui/Avatar.jsx';
 
-const schema = z.object({
+const profileSchema = z.object({
+  name: z.string().min(2, 'Name is too short').max(120),
+  avatarUrl: z.union([z.string().url('Enter a valid image URL'), z.literal('')]),
+});
+const passwordSchema = z.object({
   currentPassword: z.string().min(1, 'Required'),
   newPassword: z.string().min(8, 'At least 8 characters'),
 });
@@ -23,47 +28,90 @@ const schema = z.object({
 export default function Profile() {
   const { user } = useAuth();
   const { memberships } = useOrg();
-  const [changePassword, { isLoading }] = useChangePasswordMutation();
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors },
-  } = useForm({ resolver: zodResolver(schema) });
+  const [updateProfile, { isLoading: savingProfile }] = useUpdateProfileMutation();
+  const [changePassword, { isLoading: changingPw }] = useChangePasswordMutation();
 
-  const onSubmit = async (values) => {
+  const {
+    register: rp,
+    handleSubmit: submitProfile,
+    watch,
+    formState: { errors: pe, isDirty: profileDirty },
+  } = useForm({
+    resolver: zodResolver(profileSchema),
+    values: { name: user?.name || '', avatarUrl: user?.avatar?.url || '' },
+  });
+
+  const {
+    register: rpw,
+    handleSubmit: submitPassword,
+    reset: resetPw,
+    formState: { errors: we },
+  } = useForm({ resolver: zodResolver(passwordSchema) });
+
+  const previewName = watch('name') || user?.name;
+  const previewUrl = watch('avatarUrl');
+
+  const onSaveProfile = async (values) => {
     try {
-      await changePassword(values).unwrap();
-      toast.success('Password changed.');
-      reset();
+      await updateProfile({ name: values.name.trim(), avatarUrl: values.avatarUrl }).unwrap();
+      toast.success('Profile updated');
     } catch (err) {
       toast.error(getApiErrorMessage(err));
     }
   };
 
-  const rows = [
-    ['Name', user?.name],
-    ['Email', user?.email],
-    ['Email verified', user?.isEmailVerified ? 'Yes' : 'No'],
-    ['Last login', formatDateTime(user?.lastLoginAt)],
-  ];
+  const onChangePassword = async (values) => {
+    try {
+      await changePassword(values).unwrap();
+      toast.success('Password changed.');
+      resetPw();
+    } catch (err) {
+      toast.error(getApiErrorMessage(err));
+    }
+  };
 
   return (
     <>
       <PageMeta title="Profile" />
-      <PageHeader title="Your profile" description="Account details and security." />
+      <PageHeader title="Your profile" description="Manage your account details and security." />
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card className="divide-y divide-black/5 dark:divide-white/10">
-          {rows.map(([label, value]) => (
-            <div key={label} className="flex justify-between px-5 py-3">
-              <span className="text-sm text-gray-500">{label}</span>
-              <span className="text-sm font-medium">{value || '—'}</span>
+        {/* Edit profile */}
+        <Card className="p-6">
+          <h2 className="mb-4 text-sm font-semibold text-gray-900 dark:text-gray-100">Profile details</h2>
+          <form onSubmit={submitProfile(onSaveProfile)} className="space-y-4">
+            <div className="flex items-center gap-4">
+              <Avatar name={previewName} src={previewUrl || undefined} size="lg" />
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-gray-900 dark:text-gray-100">{previewName}</p>
+                <p className="truncate text-xs text-gray-400">{user?.email}</p>
+              </div>
             </div>
-          ))}
-          <div className="px-5 py-3">
-            <span className="text-sm text-gray-500">Organizations</span>
-            <div className="mt-2 flex flex-wrap gap-2">
+
+            <Input label="Full name" id="name" error={pe.name?.message} {...rp('name')} />
+            <Input
+              label="Avatar image URL"
+              id="avatarUrl"
+              placeholder="https://…  (leave blank to use initials)"
+              error={pe.avatarUrl?.message}
+              {...rp('avatarUrl')}
+            />
+            <Input label="Email" value={user?.email || ''} disabled readOnly />
+
+            <div className="flex items-center gap-3 pt-1">
+              <Button type="submit" isLoading={savingProfile} disabled={!profileDirty}>
+                Save changes
+              </Button>
+              <span className="text-xs text-gray-400">
+                {user?.isEmailVerified ? 'Email verified' : 'Email not verified'} · Last login{' '}
+                {formatDateTime(user?.lastLoginAt) || '—'}
+              </span>
+            </div>
+          </form>
+
+          <div className="mt-6 border-t border-black/5 pt-4 dark:border-white/10">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">Organizations</p>
+            <div className="flex flex-wrap gap-2">
               {memberships.map((m) => (
                 <Badge key={m.organization.id} className={ROLE_META[m.role] || ROLE_META.member}>
                   {m.organization.name} · <span className="capitalize">{m.role}</span>
@@ -73,26 +121,27 @@ export default function Profile() {
           </div>
         </Card>
 
-        <Card className="p-5">
+        {/* Change password */}
+        <Card className="p-6">
           <h2 className="mb-4 text-sm font-semibold text-gray-900 dark:text-gray-100">Change password</h2>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={submitPassword(onChangePassword)} className="space-y-4">
             <Input
               label="Current password"
               type="password"
               id="currentPassword"
               autoComplete="current-password"
-              error={errors.currentPassword?.message}
-              {...register('currentPassword')}
+              error={we.currentPassword?.message}
+              {...rpw('currentPassword')}
             />
             <Input
               label="New password"
               type="password"
               id="newPassword"
               autoComplete="new-password"
-              error={errors.newPassword?.message}
-              {...register('newPassword')}
+              error={we.newPassword?.message}
+              {...rpw('newPassword')}
             />
-            <Button type="submit" isLoading={isLoading}>
+            <Button type="submit" isLoading={changingPw}>
               Update password
             </Button>
           </form>

@@ -15,6 +15,7 @@ import { getApiErrorMessage } from '@/helpers/apiError.js';
 import { TASK_COLUMNS, TASK_PRIORITY } from '@/constants';
 import Select from '@/components/ui/Select.jsx';
 import Input from '@/components/ui/Input.jsx';
+import DatePicker from '@/components/ui/DatePicker.jsx';
 import Avatar from '@/components/ui/Avatar.jsx';
 import Spinner from '@/components/ui/Spinner.jsx';
 import { cn } from '@/lib/classNames.js';
@@ -141,11 +142,11 @@ export default function TaskDetailPanel({ taskId, onClose }) {
                       <option key={t.id} value={t.id}>{t.name}</option>
                     ))}
                   </Select>
-                  <Input
-                    type="date"
+                  <DatePicker
                     label="Due date"
+                    placeholder="No due date"
                     value={toDateInput(task.dueDate)}
-                    onChange={(e) => patch({ dueDate: e.target.value ? new Date(e.target.value).toISOString() : null })}
+                    onChange={(v) => patch({ dueDate: v ? new Date(v).toISOString() : null })}
                   />
                   <Input
                     label="Labels"

@@ -35,6 +35,7 @@ export const ROUTES = Object.freeze({
   LIST: '/app/list',
   TEAMS: '/app/teams',
   REPORTS: '/app/reports',
+  RELEASES: '/app/releases',
   MEMBERS: '/app/members',
   SETTINGS: '/app/settings',
   PROFILE: '/app/profile',

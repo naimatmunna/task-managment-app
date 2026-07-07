@@ -21,6 +21,7 @@ const Board = lazy(() => import('@/pages/Board.jsx'));
 const TasksList = lazy(() => import('@/pages/TasksList.jsx'));
 const Teams = lazy(() => import('@/pages/Teams.jsx'));
 const Reports = lazy(() => import('@/pages/Reports.jsx'));
+const ReleaseNotes = lazy(() => import('@/pages/ReleaseNotes.jsx'));
 const Members = lazy(() => import('@/pages/Members.jsx'));
 const Settings = lazy(() => import('@/pages/Settings.jsx'));
 const Profile = lazy(() => import('@/pages/Profile.jsx'));
@@ -61,6 +62,7 @@ export default function AppRouter() {
               <Route path={ROUTES.LIST} element={<TasksList />} />
               <Route path={ROUTES.TEAMS} element={<Teams />} />
               <Route path={ROUTES.REPORTS} element={<Reports />} />
+              <Route path={ROUTES.RELEASES} element={<ReleaseNotes />} />
               <Route path={ROUTES.MEMBERS} element={<Members />} />
               <Route path={ROUTES.SETTINGS} element={<Settings />} />
               <Route path={ROUTES.PROFILE} element={<Profile />} />

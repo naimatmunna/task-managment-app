@@ -3,29 +3,27 @@ import { format } from 'date-fns';
 import { useDirectory } from '@/hooks/useDirectory.js';
 import { TASK_COLUMNS, TASK_PRIORITY, PRIORITY_META } from '@/constants';
 import { DUE_PRESETS, DUE_LABELS } from '@/features/tasks/taskQuery.js';
+import DatePicker from '@/components/ui/DatePicker.jsx';
 
 const STATUS_LABEL = Object.fromEntries(TASK_COLUMNS.map((c) => [c.key, c.label]));
 
 // Compact, consistent filter controls.
 const SEL =
   'select-field h-9 rounded-lg border border-gray-200 bg-white pl-3 pr-8 text-sm text-gray-700 shadow-xs transition-colors focus:border-brand-500 focus:outline-none dark:border-white/10 dark:bg-gray-800/70 dark:text-gray-200';
-const DATE_INPUT =
-  'h-9 rounded-lg border border-gray-200 bg-white px-2.5 text-sm text-gray-700 shadow-xs focus:border-brand-500 focus:outline-none dark:border-white/10 dark:bg-gray-800/70 dark:text-gray-200';
 
 /** Compact, URL-backed task filter bar with due-date ranges + removable chips. */
-export default function TaskFilters({ filters, setFilter, clear, activeCount, showStatus = false, resultCount }) {
+export default function TaskFilters({ filters, setFilter, setFilters, clear, activeCount, showStatus = false, resultCount }) {
   const { members, teams } = useDirectory();
 
   const memberName = (id) =>
     id === 'none' ? 'Unassigned' : members.find((m) => m.id === id)?.name || 'Member';
   const teamName = (id) => teams.find((t) => t.id === id)?.name || 'Team';
 
+  // Switching the due preset and clearing the custom range must be one atomic
+  // update — three separate setFilter calls would clobber each other.
   const onDue = (val) => {
-    setFilter('due', val);
-    if (val !== 'custom') {
-      setFilter('dueAfter', '');
-      setFilter('dueBefore', '');
-    }
+    if (val === 'custom') setFilter('due', val);
+    else setFilters({ due: val, dueAfter: '', dueBefore: '' });
   };
 
   const chips = [];
@@ -108,9 +106,28 @@ export default function TaskFilters({ filters, setFilter, clear, activeCount, sh
       {filters.due === 'custom' && (
         <div className="flex flex-wrap items-center gap-2 rounded-lg border border-gray-200/70 bg-gray-50/70 px-3 py-2 dark:border-white/10 dark:bg-gray-800/40">
           <span className="text-xs font-medium text-gray-500">Due between</span>
-          <input type="date" value={filters.dueAfter || ''} max={filters.dueBefore || undefined} onChange={(e) => setFilter('dueAfter', e.target.value)} className={DATE_INPUT} aria-label="Due after" />
-          <span className="text-gray-400">→</span>
-          <input type="date" value={filters.dueBefore || ''} min={filters.dueAfter || undefined} onChange={(e) => setFilter('dueBefore', e.target.value)} className={DATE_INPUT} aria-label="Due before" />
+          <div className="w-full sm:w-40">
+            <DatePicker
+              size="sm"
+              placeholder="Start"
+              value={filters.dueAfter || ''}
+              max={filters.dueBefore || undefined}
+              onChange={(v) => setFilter('dueAfter', v)}
+              aria-label="Due after"
+            />
+          </div>
+          <span className="hidden text-gray-400 sm:inline">→</span>
+          <div className="w-full sm:w-40">
+            <DatePicker
+              size="sm"
+              placeholder="End"
+              align="end"
+              value={filters.dueBefore || ''}
+              min={filters.dueAfter || undefined}
+              onChange={(v) => setFilter('dueBefore', v)}
+              aria-label="Due before"
+            />
+          </div>
         </div>
       )}
 

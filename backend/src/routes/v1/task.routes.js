@@ -10,6 +10,7 @@ import {
   commentSchema,
   taskIdSchema,
   listTasksSchema,
+  exportTasksSchema,
 } from '../../validators/task.validator.js';
 
 const router = Router();
@@ -20,6 +21,7 @@ router.use(authenticate, resolveOrg);
 
 router.get('/', validate(listTasksSchema), taskController.listTasks);
 router.get('/board', validate(listTasksSchema), taskController.boardTasks);
+router.get('/export', validate(exportTasksSchema), taskController.exportTasks);
 router.post('/', validate(createTaskSchema), taskController.createTask);
 router.get('/:id', validate(taskIdSchema), taskController.getTask);
 router.patch('/:id', validate(updateTaskSchema), taskController.updateTask);

@@ -124,6 +124,20 @@ describe('Auth flow (OTP)', () => {
       .send({ email: 'nobody@example.com' });
     expect(res.status).toBe(200);
   });
+
+  it('lets a user edit their own profile', async () => {
+    const { token } = await signupAndVerify();
+    const res = await request(app)
+      .patch(`${base}/auth/me`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'Ada Lovelace', avatarUrl: 'https://example.com/a.png' });
+    expect(res.status).toBe(200);
+    expect(res.body.data.user.name).toBe('Ada Lovelace');
+    expect(res.body.data.user.avatar.url).toBe('https://example.com/a.png');
+
+    const me = await request(app).get(`${base}/auth/me`).set('Authorization', `Bearer ${token}`);
+    expect(me.body.data.user.name).toBe('Ada Lovelace');
+  });
 });
 
 describe('Health', () => {
