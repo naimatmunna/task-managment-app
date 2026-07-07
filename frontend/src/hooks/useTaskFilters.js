@@ -10,15 +10,26 @@ export const useTaskFilters = () => {
 
   const filters = useMemo(() => Object.fromEntries(searchParams.entries()), [searchParams]);
 
-  const setFilter = useCallback(
-    (key, value) => {
+  /**
+   * Apply several filter changes in a single URL update. This must be atomic:
+   * `setSearchParams` closes over the current params, so multiple synchronous
+   * calls each start from the same base and the last `navigate` wins — silently
+   * dropping the earlier changes (e.g. selecting a due preset while also
+   * clearing the custom range). Batching avoids that.
+   */
+  const setFilters = useCallback(
+    (patch) => {
       setSearchParams(
         (prev) => {
           const next = new URLSearchParams(prev);
-          if (value === '' || value == null) next.delete(key);
-          else next.set(key, value);
-          // Any filter change resets pagination.
-          if (key !== 'page') next.delete('page');
+          let changedNonPage = false;
+          Object.entries(patch).forEach(([key, value]) => {
+            if (value === '' || value == null) next.delete(key);
+            else next.set(key, value);
+            if (key !== 'page') changedNonPage = true;
+          });
+          // Any filter change (other than paging itself) resets pagination.
+          if (changedNonPage) next.delete('page');
           return next;
         },
         { replace: true },
@@ -27,11 +38,13 @@ export const useTaskFilters = () => {
     [setSearchParams],
   );
 
+  const setFilter = useCallback((key, value) => setFilters({ [key]: value }), [setFilters]);
+
   const clear = useCallback(() => setSearchParams({}, { replace: true }), [setSearchParams]);
 
   const activeCount = ['status', 'priority', 'assigneeId', 'teamId', 'search', 'label', 'due'].filter(
     (k) => filters[k],
   ).length;
 
-  return { filters, setFilter, clear, activeCount };
+  return { filters, setFilter, setFilters, clear, activeCount };
 };

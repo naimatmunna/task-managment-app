@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { format, isPast, isToday } from 'date-fns';
-import { Plus, ArrowUpDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, ArrowUpDown, ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import { useTaskListQuery } from '@/features/tasks/taskApi.js';
 import { toApiFilters } from '@/features/tasks/taskQuery.js';
 import { useTaskFilters } from '@/hooks/useTaskFilters.js';
@@ -16,6 +16,7 @@ import StatusBadge from '@/components/tasks/StatusBadge.jsx';
 import TaskFilters from '@/components/tasks/TaskFilters.jsx';
 import TaskFormModal from '@/components/tasks/TaskFormModal.jsx';
 import TaskDetailPanel from '@/components/tasks/TaskDetailPanel.jsx';
+import ExportTasksModal from '@/components/tasks/ExportTasksModal.jsx';
 import { List as ListIcon } from 'lucide-react';
 import { cn } from '@/lib/classNames.js';
 
@@ -30,9 +31,10 @@ const HEADERS = [
 ];
 
 export default function TasksList() {
-  const { filters, setFilter, clear, activeCount } = useTaskFilters();
+  const { filters, setFilter, setFilters, clear, activeCount } = useTaskFilters();
   const { data, isLoading, isFetching } = useTaskListQuery(toApiFilters(filters));
   const [addOpen, setAddOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   const [openTaskId, setOpenTaskId] = useState(null);
 
   const tasks = data?.tasks || [];
@@ -52,14 +54,20 @@ export default function TasksList() {
         title="Tasks"
         description="A dense, sortable view of every task."
         actions={
-          <Button onClick={() => setAddOpen(true)}>
-            <Plus className="h-4 w-4" /> New task
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="secondary" onClick={() => setExportOpen(true)}>
+              <Download className="h-4 w-4" /> Export
+            </Button>
+            <Button onClick={() => setAddOpen(true)}>
+              <Plus className="h-4 w-4" /> New task
+            </Button>
+          </div>
         }
       />
       <TaskFilters
         filters={filters}
         setFilter={setFilter}
+        setFilters={setFilters}
         clear={clear}
         activeCount={activeCount}
         showStatus
@@ -176,6 +184,7 @@ export default function TasksList() {
       )}
 
       {addOpen && <TaskFormModal open onClose={() => setAddOpen(false)} />}
+      {exportOpen && <ExportTasksModal open onClose={() => setExportOpen(false)} />}
       <TaskDetailPanel taskId={openTaskId} onClose={() => setOpenTaskId(null)} />
     </>
   );

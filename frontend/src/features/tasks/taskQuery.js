@@ -1,11 +1,4 @@
-import {
-  startOfDay,
-  endOfDay,
-  startOfWeek,
-  endOfWeek,
-  startOfMonth,
-  endOfMonth,
-} from 'date-fns';
+import { startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
 
 /** Due-date filter presets shown in the tasks filter bar. */
 export const DUE_PRESETS = [
@@ -20,6 +13,14 @@ export const DUE_PRESETS = [
 export const DUE_LABELS = Object.fromEntries(DUE_PRESETS.map((p) => [p.value, p.label]));
 
 const WEEK = { weekStartsOn: 1 }; // Monday-based work week
+
+// Due dates are stored as UTC midnight of a *calendar* day. To filter without
+// timezone drift, every bound is the UTC start/end of the relevant calendar day
+// (taken from the viewer's local calendar for presets like "today"/"this week").
+const utcStart = (d) =>
+  new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0)).toISOString();
+const utcEnd = (d) =>
+  new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999)).toISOString();
 
 /**
  * Translate the URL filter state into the query params the API understands.
@@ -36,20 +37,21 @@ export const toApiFilters = (filters = {}) => {
       api.overdue = 'true';
       break;
     case 'today':
-      api.dueAfter = startOfDay(now).toISOString();
-      api.dueBefore = endOfDay(now).toISOString();
+      api.dueAfter = utcStart(now);
+      api.dueBefore = utcEnd(now);
       break;
     case 'week':
-      api.dueAfter = startOfWeek(now, WEEK).toISOString();
-      api.dueBefore = endOfWeek(now, WEEK).toISOString();
+      api.dueAfter = utcStart(startOfWeek(now, WEEK));
+      api.dueBefore = utcEnd(endOfWeek(now, WEEK));
       break;
     case 'month':
-      api.dueAfter = startOfMonth(now).toISOString();
-      api.dueBefore = endOfMonth(now).toISOString();
+      api.dueAfter = utcStart(startOfMonth(now));
+      api.dueBefore = utcEnd(endOfMonth(now));
       break;
     case 'custom':
-      if (dueAfter) api.dueAfter = startOfDay(new Date(dueAfter)).toISOString();
-      if (dueBefore) api.dueBefore = endOfDay(new Date(dueBefore)).toISOString();
+      // Inputs are already `yyyy-MM-dd` calendar days — bound them in UTC directly.
+      if (dueAfter) api.dueAfter = `${String(dueAfter).slice(0, 10)}T00:00:00.000Z`;
+      if (dueBefore) api.dueBefore = `${String(dueBefore).slice(0, 10)}T23:59:59.999Z`;
       break;
     default:
       break;

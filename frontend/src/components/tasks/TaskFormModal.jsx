@@ -8,6 +8,7 @@ import Modal from '@/components/ui/Modal.jsx';
 import Input from '@/components/ui/Input.jsx';
 import Select from '@/components/ui/Select.jsx';
 import Button from '@/components/ui/Button.jsx';
+import DatePicker from '@/components/ui/DatePicker.jsx';
 
 /** Quick-add / create-task modal. `defaultStatus` seeds the column it opens from. */
 export default function TaskFormModal({ open, onClose, defaultStatus = 'todo' }) {
@@ -91,7 +92,12 @@ export default function TaskFormModal({ open, onClose, defaultStatus = 'todo' })
               </option>
             ))}
           </Select>
-          <Input type="date" label="Due date" value={form.dueDate} onChange={set('dueDate')} />
+          <DatePicker
+            label="Due date"
+            placeholder="No due date"
+            value={form.dueDate}
+            onChange={(v) => setForm((f) => ({ ...f, dueDate: v }))}
+          />
           <Input label="Labels" placeholder="bug, ux" value={form.labels} onChange={set('labels')} />
         </div>
         <div className="flex justify-end gap-2 pt-2">

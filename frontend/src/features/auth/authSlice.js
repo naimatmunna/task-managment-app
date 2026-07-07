@@ -18,10 +18,14 @@ const authSlice = createSlice({
       state.user = null;
       state.isAuthenticated = false;
     },
+    /** Mark the session authenticated (user is hydrated separately via /me). */
+    setAuthenticated(state, action) {
+      state.isAuthenticated = action.payload;
+    },
   },
 });
 
-export const { setCredentials, clearCredentials } = authSlice.actions;
+export const { setCredentials, clearCredentials, setAuthenticated } = authSlice.actions;
 export const selectCurrentUser = (s) => s.auth.user;
 export const selectIsAuthenticated = (s) => s.auth.isAuthenticated;
 export const selectUserRoles = (s) => s.auth.user?.roles ?? [];

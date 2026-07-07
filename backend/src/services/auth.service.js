@@ -180,6 +180,18 @@ class AuthService {
     await user.save();
   }
 
+  /** Update the caller's own profile (name / avatar). */
+  async updateProfile(userId, { name, avatarUrl }) {
+    const user = await userRepository.findById(userId);
+    if (!user) throw ApiError.unauthorized();
+    if (name !== undefined) user.name = name;
+    if (avatarUrl !== undefined) {
+      user.avatar = { url: avatarUrl || undefined, publicId: user.avatar?.publicId };
+    }
+    await user.save();
+    return user;
+  }
+
   /** Full principal for /me: the user plus their org memberships. */
   async me(userId) {
     const user = await userRepository.findById(userId);

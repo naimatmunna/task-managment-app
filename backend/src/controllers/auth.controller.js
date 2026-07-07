@@ -92,3 +92,8 @@ export const me = catchAsync(async (req, res) => {
   const { user, memberships } = await authService.me(req.user.id);
   return ApiResponse.send(res, { data: { user, memberships } });
 });
+
+export const updateMe = catchAsync(async (req, res) => {
+  const user = await authService.updateProfile(req.user.id, req.body);
+  return ApiResponse.send(res, { message: 'Profile updated', data: { user } });
+});

@@ -8,11 +8,15 @@ const base = {
   message: { success: false, message: 'Too many requests, please try again later.' },
 };
 
-/** Global limiter for the whole API surface. */
+/**
+ * Global limiter for the whole API surface. Task routes are exempted so heavy
+ * board interaction (drag-to-reorder, rapid inline edits) is never throttled.
+ */
 export const apiLimiter = rateLimit({
   windowMs: config.rateLimit.windowMs,
   max: config.rateLimit.max,
   ...base,
+  skip: (req) => config.isTest || req.path.includes('/tasks'),
 });
 
 /**

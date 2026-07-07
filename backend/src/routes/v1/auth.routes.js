@@ -11,6 +11,7 @@ import {
   forgotPasswordSchema,
   resetPasswordSchema,
   changePasswordSchema,
+  updateProfileSchema,
 } from '../../validators/auth.validator.js';
 
 const router = Router();
@@ -37,6 +38,7 @@ router.post('/reset-password', authLimiter, validate(resetPasswordSchema), authC
 // Authenticated
 router.use(authenticate);
 router.get('/me', authController.me);
+router.patch('/me', validate(updateProfileSchema), authController.updateMe);
 router.post('/logout', authController.logout);
 router.post('/change-password', validate(changePasswordSchema), authController.changePassword);
 
