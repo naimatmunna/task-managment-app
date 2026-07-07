@@ -1,4 +1,4 @@
-# Task Management
+# Nuvora
 
 A modern, multi-tenant team task-management app — a lean, focused alternative to Jira/Linear/Asana. Built on the MERN stack (MongoDB · Express · React · Node), plain JavaScript (ES modules) end to end.
 
