@@ -14,7 +14,7 @@ const schema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PORT: z.coerce.number().int().positive().default(5000),
   API_PREFIX: z.string().default('/api'),
-  APP_NAME: z.string().default('PropVia'),
+  APP_NAME: z.string().default('Nuvora'),
 
   MONGO_URI: z.string().min(1, 'MONGO_URI is required'),
 

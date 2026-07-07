@@ -2,11 +2,13 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { User, Building2, Mail } from 'lucide-react';
 import { signupSchema } from '@/schemas/auth.schema.js';
 import { useSignupMutation } from '@/features/auth/authApi.js';
 import { getApiErrorMessage } from '@/helpers/apiError.js';
 import { ROUTES } from '@/constants';
 import Input from '@/components/ui/Input.jsx';
+import PasswordInput from '@/components/ui/PasswordInput.jsx';
 import Button from '@/components/ui/Button.jsx';
 import PageMeta from '@/components/common/PageMeta.jsx';
 
@@ -46,10 +48,19 @@ export default function Signup() {
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
         <div className="grid gap-4 sm:grid-cols-2">
-          <Input label="Your name" id="name" autoComplete="name" error={errors.name?.message} {...register('name')} />
+          <Input
+            label="Your name"
+            id="name"
+            icon={User}
+            placeholder="Jane Doe"
+            autoComplete="name"
+            error={errors.name?.message}
+            {...register('name')}
+          />
           <Input
             label="Organization"
             id="organizationName"
+            icon={Building2}
             placeholder="Acme Inc"
             error={errors.organizationName?.message}
             {...register('organizationName')}
@@ -59,18 +70,25 @@ export default function Signup() {
           label="Work email"
           type="email"
           id="email"
+          icon={Mail}
+          placeholder="you@company.com"
           autoComplete="email"
           error={errors.email?.message}
           {...register('email')}
         />
-        <Input
-          label="Password"
-          type="password"
-          id="password"
-          autoComplete="new-password"
-          error={errors.password?.message}
-          {...register('password')}
-        />
+        <div>
+          <PasswordInput
+            label="Password"
+            id="password"
+            placeholder="Create a strong password"
+            autoComplete="new-password"
+            error={errors.password?.message}
+            {...register('password')}
+          />
+          <p className="mt-1.5 text-xs text-gray-400 dark:text-gray-500">
+            Use at least 8 characters.
+          </p>
+        </div>
         <Button type="submit" size="lg" isLoading={isLoading} className="w-full">
           Create account
         </Button>
