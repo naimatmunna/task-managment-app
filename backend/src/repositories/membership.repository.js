@@ -44,11 +44,12 @@ class MembershipRepository extends BaseRepository {
       .exec();
   }
 
+  /**
+   * Look up an invite by its hashed token WITHOUT filtering on expiry, so the
+   * caller can distinguish "no such token" (invalid) from "found but expired".
+   */
   findByInviteToken(hashedToken) {
-    return this.model
-      .findOne({ inviteToken: hashedToken, inviteExpiresAt: { $gt: new Date() } })
-      .select('+inviteToken')
-      .exec();
+    return this.model.findOne({ inviteToken: hashedToken }).select('+inviteToken').exec();
   }
 
   countByOrg(organizationId, filter = {}) {

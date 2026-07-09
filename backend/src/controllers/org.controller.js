@@ -24,10 +24,14 @@ export const listMembers = catchAsync(async (req, res) => {
 });
 
 export const inviteMember = catchAsync(async (req, res) => {
-  const { membership, devToken } = await orgService.inviteMember(req.orgId, req.user, req.body);
+  const { membership, emailSent, devToken } = await orgService.inviteMember(
+    req.orgId,
+    req.user,
+    req.body,
+  );
   return ApiResponse.created(res, {
-    message: 'Invitation sent',
-    data: { membership, devToken },
+    message: emailSent ? 'Invitation sent' : 'Invitation created (email not sent)',
+    data: { membership, emailSent, devToken },
   });
 });
 

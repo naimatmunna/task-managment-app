@@ -50,9 +50,18 @@ export default function AcceptInvite() {
     );
   }
   if (isError) {
+    // Prefer the server's message (e.g. "invalid" vs "expired"). Only when the
+    // request never reached the API (network/proxy/404, no JSON body) do we show
+    // a generic load error — NOT a misleading "expired" claim.
+    const serverMessage = error?.data?.message;
+    const message =
+      serverMessage ||
+      (typeof error?.status === 'number'
+        ? `Couldn't load this invitation (error ${error.status}). Check the link or try again.`
+        : "Couldn't reach the server. Please check your connection and try again.");
     return (
       <div className="text-center">
-        <p className="text-sm text-red-600">{getApiErrorMessage(error, 'This invitation is invalid or has expired.')}</p>
+        <p className="text-sm text-red-600">{message}</p>
         <Link to={ROUTES.LOGIN} className="mt-4 inline-block text-sm text-brand-600 hover:underline">
           Back to sign in
         </Link>

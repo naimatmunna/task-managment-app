@@ -45,7 +45,16 @@ function InviteModal({ open, onClose }) {
   const onSubmit = async (values) => {
     try {
       const res = await invite(values).unwrap();
-      toast.success(`Invitation sent to ${values.email}`);
+      if (res.data?.emailSent) {
+        toast.success(`Invitation sent to ${values.email}`);
+      } else {
+        // Don't claim success when the email never went out (e.g. SMTP not
+        // configured or failing) — the admin needs to know to share the link.
+        toast(`Invite created, but the email could not be sent to ${values.email}.`, {
+          icon: '⚠️',
+          duration: 7000,
+        });
+      }
       if (res.data?.devToken) {
         // Dev convenience when SMTP isn't configured.
         toast(`Dev invite link: /accept-invite?token=${res.data.devToken}`, { duration: 8000 });

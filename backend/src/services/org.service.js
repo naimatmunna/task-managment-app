@@ -4,12 +4,30 @@ import userRepository from '../repositories/user.repository.js';
 import tokenService from './token.service.js';
 import emailService from './email.service.js';
 import authService from './auth.service.js';
+import logger from '../utils/logger.js';
 import ApiError from '../utils/ApiError.js';
 import config from '../config/index.js';
 import { createHashedToken, hashToken } from '../utils/crypto.js';
 import { ORG_ROLES, MEMBERSHIP_STATUS } from '../constants/orgRoles.js';
 
 const DAY = 24 * 60 * 60 * 1000;
+
+/**
+ * Resolve an invite by its raw token, distinguishing the two failure modes so
+ * the client (and logs) can tell an unknown/mismatched token from a genuinely
+ * expired one — they are NOT the same problem.
+ */
+const resolveInvite = async (rawToken) => {
+  const membership = await membershipRepository.findByInviteToken(hashToken(rawToken));
+  if (!membership) {
+    throw ApiError.badRequest('This invitation link is invalid', { code: 'INVITE_INVALID' });
+  }
+  const expiresAt = membership.inviteExpiresAt?.getTime?.() ?? 0;
+  if (!expiresAt || expiresAt <= Date.now()) {
+    throw ApiError.badRequest('This invitation has expired', { code: 'INVITE_EXPIRED' });
+  }
+  return membership;
+};
 
 /**
  * Organization + membership + invitation use-cases. All operations are scoped
@@ -93,13 +111,26 @@ class OrgService {
 
     const inviterDoc = await userRepository.findById(inviter.id);
     const org = await organizationRepository.findById(orgId);
-    await emailService.sendInviteEmail(normalized, {
-      token: raw,
-      organizationName: org.name,
-      inviterName: inviterDoc?.name,
-    });
 
-    return { membership, devToken: config.isProd ? undefined : raw };
+    // The invite is already persisted; a mail failure must NOT fail the request
+    // (that would leave a valid invite behind but report an error, and a retry
+    // would rotate the token and invalidate the first email's link).
+    let emailSent = false;
+    try {
+      const result = await emailService.sendInviteEmail(normalized, {
+        token: raw,
+        organizationName: org.name,
+        inviterName: inviterDoc?.name,
+      });
+      emailSent = Boolean(result?.queued);
+      if (!emailSent) {
+        logger.warn(`Invite email not sent (SMTP not configured) for ${normalized} in org ${orgId}`);
+      }
+    } catch (err) {
+      logger.error(`Invite email failed for ${normalized}: ${err.message}`);
+    }
+
+    return { membership, emailSent, devToken: config.isProd ? undefined : raw };
   }
 
   /** Change a member's role. The organization owner's role is immutable here. */
@@ -143,10 +174,7 @@ class OrgService {
    * membership, and logs the invitee in.
    */
   async acceptInvite({ token, name, password }) {
-    const membership = await membershipRepository.findByInviteToken(hashToken(token));
-    if (!membership) {
-      throw ApiError.badRequest('This invitation is invalid or has expired', { code: 'INVITE_INVALID' });
-    }
+    const membership = await resolveInvite(token);
 
     const email = membership.invitedEmail;
     let user = await userRepository.findByEmail(email);
@@ -192,10 +220,7 @@ class OrgService {
 
   /** Public: what email is this invite for (so the accept screen can prefill). */
   async peekInvite(token) {
-    const membership = await membershipRepository.findByInviteToken(hashToken(token));
-    if (!membership) {
-      throw ApiError.badRequest('This invitation is invalid or has expired', { code: 'INVITE_INVALID' });
-    }
+    const membership = await resolveInvite(token);
     const org = await organizationRepository.findById(membership.organizationId);
     const existingUser = await userRepository.findByEmail(membership.invitedEmail);
     return {

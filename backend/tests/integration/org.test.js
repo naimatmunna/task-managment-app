@@ -1,5 +1,6 @@
 import request from 'supertest';
 import createApp from '../../src/app.js';
+import Membership from '../../src/models/membership.model.js';
 
 const app = createApp();
 const base = '/api/v1';
@@ -63,6 +64,39 @@ describe('Organizations, members & invites', () => {
     // Owner now sees two members.
     const members = await auth(request(app).get(`${base}/orgs/members`), token, orgId);
     expect(members.body.data.members).toHaveLength(2);
+  });
+
+  it('distinguishes an unknown token (invalid) from an expired one', async () => {
+    const { token, orgId } = await newOwner({ email: 'sep@ex.com', org: 'Sep' });
+
+    // A bogus token → invalid, not "expired".
+    const bogus = await request(app).get(`${base}/orgs/invite`).query({ token: 'x'.repeat(64) });
+    expect(bogus.status).toBe(400);
+    expect(bogus.body.code).toBe('INVITE_INVALID');
+
+    // A real invite whose expiry is in the past → expired, not "invalid".
+    const invite = await auth(request(app).post(`${base}/orgs/members/invite`), token, orgId).send({
+      email: 'late@ex.com',
+    });
+    const rawToken = invite.body.data.devToken;
+    await Membership.updateOne(
+      { invitedEmail: 'late@ex.com' },
+      { $set: { inviteExpiresAt: new Date(Date.now() - 1000) } },
+    );
+
+    const peek = await request(app).get(`${base}/orgs/invite`).query({ token: rawToken });
+    expect(peek.status).toBe(400);
+    expect(peek.body.code).toBe('INVITE_EXPIRED');
+  });
+
+  it('reports whether the invite email was actually sent', async () => {
+    const { token, orgId } = await newOwner({ email: 'mail@ex.com', org: 'Mailer' });
+    const invite = await auth(request(app).post(`${base}/orgs/members/invite`), token, orgId).send({
+      email: 'pending@ex.com',
+    });
+    // No SMTP configured in tests → the flag is present and false (not a crash).
+    expect(invite.status).toBe(201);
+    expect(invite.body.data.emailSent).toBe(false);
   });
 
   it('blocks a non-admin member from inviting', async () => {
