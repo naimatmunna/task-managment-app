@@ -18,7 +18,11 @@ const prodFormat = combine(timestamp(), errors({ stack: true }), json());
 
 const transports = [new winston.transports.Console()];
 
-if (config.isProd) {
+// Serverless platforms (Vercel, Lambda) have a read-only filesystem and capture
+// stdout for you — writing rotating log files there crashes the function.
+const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+
+if (config.isProd && !isServerless) {
   transports.push(
     new DailyRotateFile({
       dirname: 'logs',
