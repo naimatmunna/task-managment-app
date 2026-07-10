@@ -59,7 +59,7 @@ export default function TaskFormModal({ open, onClose, defaultStatus = 'todo' })
           value={form.description}
           onChange={set('description')}
           rows={3}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-800"
+          className="w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm text-gray-900 shadow-xs transition placeholder:text-gray-400 focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/12 dark:border-white/10 dark:bg-gray-800/80 dark:text-gray-100 dark:placeholder:text-gray-500"
         />
         <div className="grid grid-cols-2 gap-3">
           <Select label="Status" value={form.status} onChange={set('status')}>

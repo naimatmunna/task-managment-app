@@ -3,7 +3,10 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: light dark;
+  /* Pin the UA form-control scheme to the app theme, not the OS. Using
+     `light dark` here let native inputs/textareas render dark whenever the OS
+     preferred dark — even while the app was toggled to light mode. */
+  color-scheme: light;
   /* Semantic tokens (space-separated RGB → Tailwind alpha friendly). */
   --brand: 106 79 230; /* brand-600 */
   --canvas: 248 247 246; /* warm porcelain */
@@ -12,6 +15,7 @@
 }
 
 .dark {
+  color-scheme: dark;
   --brand: 131 107 241; /* brand-500 reads better on dark */
   --canvas: 18 17 16;
   --surface: 27 25 23;
