@@ -23,6 +23,9 @@ const userSchema = new Schema(
     },
     isActive: { type: Boolean, default: true },
     isEmailVerified: { type: Boolean, default: false },
+    // A requested-but-not-yet-verified new email. The live `email` keeps working
+    // until the change is confirmed via OTP, so a typo can't lock the user out.
+    pendingEmail: { type: String, lowercase: true, trim: true, default: null, select: false },
     avatar: { url: String, publicId: String },
     lastLoginAt: { type: Date },
 
@@ -40,6 +43,7 @@ const userSchema = new Schema(
         delete ret.__v;
         delete ret.password;
         delete ret.refreshTokenHashes;
+        delete ret.pendingEmail;
         return ret;
       },
     },

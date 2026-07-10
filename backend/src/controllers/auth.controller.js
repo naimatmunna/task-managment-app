@@ -97,3 +97,26 @@ export const updateMe = catchAsync(async (req, res) => {
   const user = await authService.updateProfile(req.user.id, req.body);
   return ApiResponse.send(res, { message: 'Profile updated', data: { user } });
 });
+
+export const requestEmailChange = catchAsync(async (req, res) => {
+  const { pendingEmail, devCode } = await authService.requestEmailChange({
+    userId: req.user.id,
+    ...req.body,
+  });
+  return ApiResponse.send(res, {
+    message: 'Verification code sent to your new email',
+    data: { pendingEmail, devCode },
+  });
+});
+
+export const verifyEmailChange = catchAsync(async (req, res) => {
+  const { user, tokens, memberships } = await authService.verifyEmailChange({
+    userId: req.user.id,
+    code: req.body.code,
+  });
+  setRefreshCookie(res, tokens.refreshToken);
+  return ApiResponse.send(res, {
+    message: 'Email updated',
+    data: { user, accessToken: tokens.accessToken, memberships },
+  });
+});

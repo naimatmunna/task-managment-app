@@ -4,6 +4,7 @@ import { apiSlice } from '@/api/apiSlice.js';
 import authReducer from '@/features/auth/authSlice.js';
 import orgReducer from '@/features/org/orgSlice.js';
 import themeReducer from '@/features/theme/themeSlice.js';
+import presenceReducer from '@/features/presence/presenceSlice.js';
 
 export const store = configureStore({
   reducer: {
@@ -11,6 +12,7 @@ export const store = configureStore({
     auth: authReducer,
     org: orgReducer,
     theme: themeReducer,
+    presence: presenceReducer,
   },
   middleware: (getDefault) => getDefault().concat(apiSlice.middleware),
   devTools: import.meta.env.DEV,

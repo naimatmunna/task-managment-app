@@ -20,6 +20,11 @@ class UserRepository extends BaseRepository {
     return this.model.findById(id).select('+password +refreshTokenHashes').exec();
   }
 
+  /** Load a user including the normally-hidden pendingEmail field. */
+  findByIdWithPendingEmail(id) {
+    return this.model.findById(id).select('+pendingEmail').exec();
+  }
+
   /**
    * Atomic refresh-token-hash mutations. These use MongoDB update operators
    * instead of read-modify-save() so concurrent requests for the same user

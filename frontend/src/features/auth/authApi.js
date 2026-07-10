@@ -78,6 +78,16 @@ export const authApi = apiSlice.injectEndpoints({
       },
       invalidatesTags: ['Auth'],
     }),
+    // Step 1: request an email change — emails an OTP to the new address.
+    requestEmailChange: builder.mutation({
+      query: (body) => ({ url: '/auth/change-email', method: 'POST', body }),
+    }),
+    // Step 2: confirm with the OTP — swaps the email and re-issues tokens.
+    verifyEmailChange: builder.mutation({
+      query: (body) => ({ url: '/auth/verify-email-change', method: 'POST', body }),
+      onQueryStarted: onAuthSuccess,
+      invalidatesTags: ['Auth'],
+    }),
   }),
 });
 
@@ -93,4 +103,6 @@ export const {
   useResetPasswordMutation,
   useChangePasswordMutation,
   useUpdateProfileMutation,
+  useRequestEmailChangeMutation,
+  useVerifyEmailChangeMutation,
 } = authApi;

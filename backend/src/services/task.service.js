@@ -3,6 +3,7 @@ import teamRepository from '../repositories/team.repository.js';
 import membershipRepository from '../repositories/membership.repository.js';
 import userRepository from '../repositories/user.repository.js';
 import notificationService from './notification.service.js';
+import { emitToOrg } from '../loaders/socket.js';
 import ApiError from '../utils/ApiError.js';
 import { TASK_STATUS, TASK_ACTIVITY, TASK_STATUS_VALUES, TASK_PRIORITY_VALUES } from '../constants/taskEnums.js';
 
@@ -154,7 +155,9 @@ class TaskService {
     if (task.assigneeId && String(task.assigneeId) !== String(actorId)) {
       await this.notifyAssignment(orgId, task, actorId);
     }
-    return this.get(orgId, task.id);
+    const created = await this.get(orgId, task.id);
+    emitToOrg(orgId, 'task:created', { task: created });
+    return created;
   }
 
   async update(orgId, actorId, id, patch) {
@@ -198,7 +201,9 @@ class TaskService {
     if (assignedTo && String(assignedTo) !== String(actorId)) {
       await this.notifyAssignment(orgId, task, actorId);
     }
-    return this.get(orgId, task.id);
+    const updated = await this.get(orgId, task.id);
+    emitToOrg(orgId, 'task:updated', { task: updated });
+    return updated;
   }
 
   /** Drag-drop: move a card to a column at a given float order. */
@@ -210,6 +215,7 @@ class TaskService {
     const task = await taskRepository.findByIdInOrg(id, orgId);
     if (!task) throw ApiError.notFound('Task not found');
     await taskRepository.deleteById(id);
+    emitToOrg(orgId, 'task:deleted', { id });
     return { id };
   }
 
@@ -218,7 +224,9 @@ class TaskService {
     if (!task) throw ApiError.notFound('Task not found');
     task.activity.push({ type: TASK_ACTIVITY.COMMENTED, actorId, message });
     await task.save();
-    return this.get(orgId, task.id);
+    const updated = await this.get(orgId, task.id);
+    emitToOrg(orgId, 'task:updated', { task: updated });
+    return updated;
   }
 
   /** In-app + email notification to the newly-assigned user. Never blocks the request. */

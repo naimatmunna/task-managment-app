@@ -69,6 +69,7 @@ class EmailService {
       [OTP_PURPOSE.SIGNUP]: 'confirm your email address',
       [OTP_PURPOSE.LOGIN]: 'finish signing in',
       [OTP_PURPOSE.RESET]: 'reset your password',
+      [OTP_PURPOSE.EMAIL_CHANGE]: 'confirm your new email address',
     }[purpose];
 
     if (!this.enabled) {

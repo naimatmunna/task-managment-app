@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import { useSelector } from 'react-redux';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import toast from 'react-hot-toast';
 import { UserPlus, Trash2, MailPlus } from 'lucide-react';
+import { selectOnlineIds } from '@/features/presence/presenceSlice.js';
 import {
   useMembersQuery,
   useInviteMemberMutation,
@@ -89,11 +91,18 @@ function InviteModal({ open, onClose }) {
 
 export default function Members() {
   const { data: members, isLoading } = useMembersQuery();
-  const { canManage } = useOrg();
+  const { canManage, orgId } = useOrg();
   const { user } = useAuth();
   const [updateRole] = useUpdateMemberRoleMutation();
   const [removeMember] = useRemoveMemberMutation();
   const [inviteOpen, setInviteOpen] = useState(false);
+
+  const onlineIds = useSelector(selectOnlineIds(orgId));
+  const onlineSet = useMemo(() => new Set(onlineIds), [onlineIds]);
+  const onlineCount = useMemo(
+    () => (members || []).filter((m) => m.userId && onlineSet.has(m.userId.id)).length,
+    [members, onlineSet],
+  );
 
   const onRole = async (id, role) => {
     try {
@@ -120,7 +129,9 @@ export default function Members() {
       <PageMeta title="Members" />
       <PageHeader
         title="Members"
-        description="People with access to this organization."
+        description={`People with access to this organization.${
+          onlineCount ? ` · ${onlineCount} online now` : ''
+        }`}
         actions={
           canManage && (
             <Button onClick={() => setInviteOpen(true)}>
@@ -158,11 +169,12 @@ export default function Members() {
                   const email = person?.email || m.invitedEmail;
                   const isSelf = person && person.id === user?.id;
                   const isOwner = m.role === 'owner';
+                  const isOnline = person ? onlineSet.has(person.id) : undefined;
                   return (
                     <tr key={m.id} className="hover:bg-gray-50/60 dark:hover:bg-gray-800/40">
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
-                          <Avatar name={name} src={person?.avatar?.url} size="sm" />
+                          <Avatar name={name} src={person?.avatar?.url} size="sm" online={isOnline} />
                           <div className="min-w-0">
                             <div className="truncate font-medium text-gray-900 dark:text-gray-100">
                               {name} {isSelf && <span className="text-xs text-gray-400">(you)</span>}
@@ -191,7 +203,16 @@ export default function Members() {
                         </Badge>
                       </td>
                       <td className="px-4 py-3 text-gray-500">
-                        {person?.lastLoginAt ? formatDateTime(person.lastLoginAt) : '—'}
+                        {isOnline ? (
+                          <span className="inline-flex items-center gap-1.5 font-medium text-emerald-600 dark:text-emerald-400">
+                            <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                            Online now
+                          </span>
+                        ) : person?.lastLoginAt ? (
+                          formatDateTime(person.lastLoginAt)
+                        ) : (
+                          '—'
+                        )}
                       </td>
                       {canManage && (
                         <td className="px-4 py-3 text-right">

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -10,6 +11,7 @@ import { formatDateTime } from '@/helpers/format.js';
 import { ROLE_META } from '@/constants';
 import PageHeader from '@/components/app/PageHeader.jsx';
 import PageMeta from '@/components/common/PageMeta.jsx';
+import ChangeEmailModal from '@/components/profile/ChangeEmailModal.jsx';
 import Card from '@/components/ui/Card.jsx';
 import Input from '@/components/ui/Input.jsx';
 import Button from '@/components/ui/Button.jsx';
@@ -30,6 +32,7 @@ export default function Profile() {
   const { memberships } = useOrg();
   const [updateProfile, { isLoading: savingProfile }] = useUpdateProfileMutation();
   const [changePassword, { isLoading: changingPw }] = useChangePasswordMutation();
+  const [emailModalOpen, setEmailModalOpen] = useState(false);
 
   const {
     register: rp,
@@ -96,7 +99,28 @@ export default function Profile() {
               error={pe.avatarUrl?.message}
               {...rp('avatarUrl')}
             />
-            <Input label="Email" value={user?.email || ''} disabled readOnly />
+
+            <div>
+              <span className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Email
+              </span>
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 px-3.5 py-2 dark:border-white/10">
+                <div className="min-w-0">
+                  <p className="truncate text-sm text-gray-900 dark:text-gray-100">{user?.email}</p>
+                  <p className="text-xs text-gray-400">
+                    {user?.isEmailVerified ? 'Verified' : 'Not verified'}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setEmailModalOpen(true)}
+                >
+                  Change
+                </Button>
+              </div>
+            </div>
 
             <div className="flex items-center gap-3 pt-1">
               <Button type="submit" isLoading={savingProfile} disabled={!profileDirty}>
@@ -147,6 +171,12 @@ export default function Profile() {
           </form>
         </Card>
       </div>
+
+      <ChangeEmailModal
+        open={emailModalOpen}
+        onClose={() => setEmailModalOpen(false)}
+        currentEmail={user?.email}
+      />
     </>
   );
 }

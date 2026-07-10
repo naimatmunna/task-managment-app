@@ -192,6 +192,59 @@ class AuthService {
     return user;
   }
 
+  /**
+   * Begin an email change. Requires the current password (sensitive change),
+   * checks the new address is free, then stores it as `pendingEmail` and emails
+   * an OTP to it. The live email keeps working until the change is confirmed.
+   */
+  async requestEmailChange({ userId, email, password }) {
+    const newEmail = email.toLowerCase();
+    const user = await userRepository.findByIdWithSecret(userId);
+    if (!user) throw ApiError.unauthorized();
+    if (!(await user.comparePassword(password))) {
+      throw ApiError.badRequest('Password is incorrect', { code: 'BAD_CURRENT_PASSWORD' });
+    }
+    if (newEmail === user.email) {
+      throw ApiError.badRequest('That is already your email address', { code: 'EMAIL_UNCHANGED' });
+    }
+    const taken = await userRepository.findByEmail(newEmail);
+    if (taken) throw ApiError.conflict(MESSAGES.AUTH.EMAIL_IN_USE, { code: 'EMAIL_IN_USE' });
+
+    user.pendingEmail = newEmail;
+    await user.save();
+
+    const code = await otpService.issue(newEmail, OTP_PURPOSE.EMAIL_CHANGE);
+    return { pendingEmail: newEmail, devCode: this.devCode(code) };
+  }
+
+  /**
+   * Confirm a pending email change with the OTP sent to the new address, then
+   * swap it in and re-issue tokens (the new email is embedded in the JWT).
+   */
+  async verifyEmailChange({ userId, code }) {
+    const user = await userRepository.findByIdWithPendingEmail(userId);
+    if (!user || !user.pendingEmail) {
+      throw ApiError.badRequest('No pending email change to confirm', { code: 'NO_PENDING_EMAIL' });
+    }
+
+    await otpService.verify(user.pendingEmail, OTP_PURPOSE.EMAIL_CHANGE, code);
+
+    // Re-check uniqueness in case the address was claimed since the request.
+    const taken = await userRepository.findByEmail(user.pendingEmail);
+    if (taken && String(taken.id) !== String(user.id)) {
+      throw ApiError.conflict(MESSAGES.AUTH.EMAIL_IN_USE, { code: 'EMAIL_IN_USE' });
+    }
+
+    user.email = user.pendingEmail;
+    user.pendingEmail = null;
+    user.isEmailVerified = true;
+    await user.save();
+
+    const tokens = await tokenService.issuePair(user);
+    const memberships = await this.context(user.id);
+    return { user, tokens, memberships };
+  }
+
   /** Full principal for /me: the user plus their org memberships. */
   async me(userId) {
     const user = await userRepository.findById(userId);

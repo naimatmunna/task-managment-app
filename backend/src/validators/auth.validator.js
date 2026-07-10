@@ -47,3 +47,11 @@ export const updateProfileSchema = {
     avatarUrl: z.union([z.string().url('Enter a valid image URL'), z.literal(''), z.null()]).optional(),
   }),
 };
+
+export const changeEmailSchema = {
+  body: z.object({ email, password: z.string().min(1, 'Password is required') }),
+};
+
+export const verifyEmailChangeSchema = {
+  body: z.object({ code }),
+};

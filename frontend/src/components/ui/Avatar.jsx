@@ -28,9 +28,10 @@ const colorFor = (key = '') => {
 };
 
 const SIZES = { xs: 'h-6 w-6 text-[10px]', sm: 'h-7 w-7 text-xs', md: 'h-9 w-9 text-sm', lg: 'h-12 w-12 text-base' };
+const DOT_SIZES = { xs: 'h-1.5 w-1.5', sm: 'h-2 w-2', md: 'h-2.5 w-2.5', lg: 'h-3 w-3' };
 
-export default function Avatar({ name, src, size = 'md', className, title }) {
-  return (
+export default function Avatar({ name, src, size = 'md', className, title, online }) {
+  const avatar = (
     <span
       title={title || name}
       className={cn(
@@ -45,6 +46,24 @@ export default function Avatar({ name, src, size = 'md', className, title }) {
       ) : (
         initials(name)
       )}
+    </span>
+  );
+
+  // No presence dot unless `online` is explicitly provided — keeps every
+  // existing Avatar usage byte-for-byte identical.
+  if (online === undefined) return avatar;
+
+  return (
+    <span className="relative inline-flex shrink-0">
+      {avatar}
+      <span
+        title={online ? 'Online' : 'Offline'}
+        className={cn(
+          'absolute bottom-0 right-0 rounded-full ring-2 ring-white dark:ring-gray-900',
+          DOT_SIZES[size],
+          online ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-600',
+        )}
+      />
     </span>
   );
 }

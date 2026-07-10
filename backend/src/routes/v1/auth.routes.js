@@ -12,6 +12,8 @@ import {
   resetPasswordSchema,
   changePasswordSchema,
   updateProfileSchema,
+  changeEmailSchema,
+  verifyEmailChangeSchema,
 } from '../../validators/auth.validator.js';
 
 const router = Router();
@@ -39,6 +41,8 @@ router.post('/reset-password', authLimiter, validate(resetPasswordSchema), authC
 router.use(authenticate);
 router.get('/me', authController.me);
 router.patch('/me', validate(updateProfileSchema), authController.updateMe);
+router.post('/change-email', authLimiter, validate(changeEmailSchema), authController.requestEmailChange);
+router.post('/verify-email-change', authLimiter, validate(verifyEmailChangeSchema), authController.verifyEmailChange);
 router.post('/logout', authController.logout);
 router.post('/change-password', validate(changePasswordSchema), authController.changePassword);
 

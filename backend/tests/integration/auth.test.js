@@ -138,6 +138,65 @@ describe('Auth flow (OTP)', () => {
     const me = await request(app).get(`${base}/auth/me`).set('Authorization', `Bearer ${token}`);
     expect(me.body.data.user.name).toBe('Ada Lovelace');
   });
+
+  it('changes email via OTP and lets the user log in with the new address', async () => {
+    const { token } = await signupAndVerify();
+
+    // Request the change (requires the current password).
+    const req = await request(app)
+      .post(`${base}/auth/change-email`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ email: 'jane.new@example.com', password: validSignup.password });
+    expect(req.status).toBe(200);
+    expect(req.body.data.pendingEmail).toBe('jane.new@example.com');
+    const code = req.body.data.devCode;
+    expect(code).toMatch(/^\d{6}$/);
+
+    // The live email still works until confirmation.
+    const stillOld = await request(app)
+      .post(`${base}/auth/login`)
+      .send({ email: validSignup.email, password: validSignup.password });
+    expect(stillOld.status).toBe(200);
+
+    // Confirm with the OTP → email swapped, new tokens issued.
+    const confirm = await request(app)
+      .post(`${base}/auth/verify-email-change`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ code });
+    expect(confirm.status).toBe(200);
+    expect(confirm.body.data.user.email).toBe('jane.new@example.com');
+
+    // Login now works with the new email, and not the old one.
+    const withNew = await request(app)
+      .post(`${base}/auth/login`)
+      .send({ email: 'jane.new@example.com', password: validSignup.password });
+    expect(withNew.status).toBe(200);
+    const withOld = await request(app)
+      .post(`${base}/auth/login`)
+      .send({ email: validSignup.email, password: validSignup.password });
+    expect(withOld.status).toBe(401);
+  });
+
+  it('rejects an email change with the wrong password', async () => {
+    const { token } = await signupAndVerify();
+    const res = await request(app)
+      .post(`${base}/auth/change-email`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ email: 'nope@example.com', password: 'WrongPass1!' });
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe('BAD_CURRENT_PASSWORD');
+  });
+
+  it('rejects changing to an email already in use', async () => {
+    const { token } = await signupAndVerify();
+    await signupAndVerify({ email: 'taken@example.com', organizationName: 'Other Co' });
+    const res = await request(app)
+      .post(`${base}/auth/change-email`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ email: 'taken@example.com', password: validSignup.password });
+    expect(res.status).toBe(409);
+    expect(res.body.code).toBe('EMAIL_IN_USE');
+  });
 });
 
 describe('Health', () => {

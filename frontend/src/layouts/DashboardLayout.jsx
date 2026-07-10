@@ -19,6 +19,7 @@ import { config } from '@/config/env.js';
 import { ROUTES } from '@/constants';
 import { useAuth } from '@/hooks/useAuth.js';
 import { useOrg } from '@/hooks/useOrg.js';
+import { useRealtime } from '@/hooks/useRealtime.js';
 import { useMeQuery, useLogoutMutation } from '@/features/auth/authApi.js';
 import ThemeToggle from '@/components/common/ThemeToggle.jsx';
 import OrgSwitcher from '@/components/app/OrgSwitcher.jsx';
@@ -49,6 +50,9 @@ export default function DashboardLayout() {
   // Hydrate the session (user + memberships + active org) on load / refresh.
   const { isLoading } = useMeQuery();
   const [logout] = useLogoutMutation();
+
+  // Live task updates + member presence for the whole authenticated session.
+  useRealtime();
 
   const handleLogout = async () => {
     await logout().unwrap().catch(() => {});
