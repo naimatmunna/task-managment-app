@@ -7,6 +7,7 @@ export const DUE_PRESETS = [
   { value: 'today', label: 'Due today' },
   { value: 'week', label: 'Due this week' },
   { value: 'month', label: 'Due this month' },
+  { value: 'monthPick', label: 'Specific month…' },
   { value: 'custom', label: 'Custom range…' },
 ];
 
@@ -28,7 +29,7 @@ const utcEnd = (d) =>
  * so shareable URLs stay readable (`?due=week`) while the server stays generic.
  */
 export const toApiFilters = (filters = {}) => {
-  const { due, dueAfter, dueBefore, ...rest } = filters;
+  const { due, dueAfter, dueBefore, dueMonth, ...rest } = filters;
   const api = { ...rest };
   const now = new Date();
 
@@ -48,6 +49,16 @@ export const toApiFilters = (filters = {}) => {
       api.dueAfter = utcStart(startOfMonth(now));
       api.dueBefore = utcEnd(endOfMonth(now));
       break;
+    case 'monthPick': {
+      // dueMonth is a `YYYY-MM` string (user picked a specific month + year).
+      const [y, m] = String(dueMonth || '').split('-').map(Number);
+      if (y && m) {
+        const d = new Date(y, m - 1, 1);
+        api.dueAfter = utcStart(startOfMonth(d));
+        api.dueBefore = utcEnd(endOfMonth(d));
+      }
+      break;
+    }
     case 'custom':
       // Inputs are already `yyyy-MM-dd` calendar days — bound them in UTC directly.
       if (dueAfter) api.dueAfter = `${String(dueAfter).slice(0, 10)}T00:00:00.000Z`;

@@ -11,12 +11,18 @@ let socket = null;
 
 export const getSocket = () => socket;
 
+/**
+ * Open (or reuse) the realtime connection. Returns null when no socket host is
+ * configured — realtime requires a persistent server (`VITE_SOCKET_URL`), which
+ * cannot be Vercel serverless. Skipping avoids a failing WebSocket retry loop.
+ */
 export const connectSocket = () => {
+  if (!config.socketUrl) return null;
   if (socket) {
     if (!socket.connected) socket.connect();
     return socket;
   }
-  socket = io(config.socketUrl || undefined, {
+  socket = io(config.socketUrl, {
     autoConnect: true,
     transports: ['websocket'],
     auth: (cb) => cb({ token: getAccessToken() }),

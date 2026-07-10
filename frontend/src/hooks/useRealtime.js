@@ -17,6 +17,7 @@ export function useRealtime() {
 
   useEffect(() => {
     const socket = connectSocket();
+    if (!socket) return undefined; // realtime disabled (no VITE_SOCKET_URL)
 
     const refetchTasks = () => dispatch(taskApi.util.invalidateTags(['Task']));
     const onPresence = (payload) => dispatch(setOnline(payload));

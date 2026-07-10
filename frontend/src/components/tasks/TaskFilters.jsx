@@ -6,6 +6,8 @@ import { DUE_PRESETS, DUE_LABELS } from '@/features/tasks/taskQuery.js';
 import DatePicker from '@/components/ui/DatePicker.jsx';
 
 const STATUS_LABEL = Object.fromEntries(TASK_COLUMNS.map((c) => [c.key, c.label]));
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const pad2 = (n) => String(n).padStart(2, '0');
 
 // Compact, consistent filter controls.
 const SEL =
@@ -19,11 +21,19 @@ export default function TaskFilters({ filters, setFilter, setFilters, clear, act
     id === 'none' ? 'Unassigned' : members.find((m) => m.id === id)?.name || 'Member';
   const teamName = (id) => teams.find((t) => t.id === id)?.name || 'Team';
 
-  // Switching the due preset and clearing the custom range must be one atomic
-  // update — three separate setFilter calls would clobber each other.
+  const now = new Date();
+  const currentMonthStr = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}`;
+  const years = [];
+  for (let y = now.getFullYear() - 3; y <= now.getFullYear() + 3; y += 1) years.push(y);
+  const [selYear, selMonth] = (filters.dueMonth || currentMonthStr).split('-');
+
+  // Switching the due preset and clearing the sub-controls (custom range /
+  // picked month) must be one atomic update — separate setFilter calls clobber.
   const onDue = (val) => {
-    if (val === 'custom') setFilter('due', val);
-    else setFilters({ due: val, dueAfter: '', dueBefore: '' });
+    if (val === 'custom') setFilters({ due: val, dueMonth: '' });
+    else if (val === 'monthPick')
+      setFilters({ due: val, dueAfter: '', dueBefore: '', dueMonth: filters.dueMonth || currentMonthStr });
+    else setFilters({ due: val, dueAfter: '', dueBefore: '', dueMonth: '' });
   };
 
   const chips = [];
@@ -42,6 +52,9 @@ export default function TaskFilters({ filters, setFilter, setFilters, clear, act
       const a = filters.dueAfter ? format(new Date(filters.dueAfter), 'MMM d') : '…';
       const b = filters.dueBefore ? format(new Date(filters.dueBefore), 'MMM d') : '…';
       label = `Due · ${a} – ${b}`;
+    } else if (filters.due === 'monthPick') {
+      const [yy, mm] = (filters.dueMonth || '').split('-').map(Number);
+      label = yy && mm ? `Due · ${format(new Date(yy, mm - 1, 1), 'MMM yyyy')}` : 'Due · month';
     }
     chips.push({ key: 'due', label, remove: () => onDue('') });
   }
@@ -102,6 +115,36 @@ export default function TaskFilters({ filters, setFilter, setFilters, clear, act
           </span>
         )}
       </div>
+
+      {filters.due === 'monthPick' && (
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-gray-200/70 bg-gray-50/70 px-3 py-2 dark:border-white/10 dark:bg-gray-800/40">
+          <span className="text-xs font-medium text-gray-500">Due in month</span>
+          <select
+            className={SEL}
+            value={selMonth}
+            onChange={(e) => setFilter('dueMonth', `${selYear}-${e.target.value}`)}
+            aria-label="Month"
+          >
+            {MONTHS.map((label, i) => (
+              <option key={label} value={pad2(i + 1)}>
+                {label}
+              </option>
+            ))}
+          </select>
+          <select
+            className={SEL}
+            value={selYear}
+            onChange={(e) => setFilter('dueMonth', `${e.target.value}-${selMonth}`)}
+            aria-label="Year"
+          >
+            {years.map((y) => (
+              <option key={y} value={String(y)}>
+                {y}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {filters.due === 'custom' && (
         <div className="flex flex-wrap items-center gap-2 rounded-lg border border-gray-200/70 bg-gray-50/70 px-3 py-2 dark:border-white/10 dark:bg-gray-800/40">

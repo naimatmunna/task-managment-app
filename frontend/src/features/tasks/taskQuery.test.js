@@ -50,4 +50,22 @@ describe('toApiFilters — due-date translation', () => {
     expect(api.dueAfter).toBe(`${ymd(startOfMonth(now))}T00:00:00.000Z`);
     expect(api.dueBefore).toBe(`${ymd(endOfMonth(now))}T23:59:59.999Z`);
   });
+
+  it('monthPick → bounds for the selected YYYY-MM, stripping the raw dueMonth', () => {
+    const api = toApiFilters({ due: 'monthPick', dueMonth: '2025-12', status: 'done' });
+    expect(api.dueAfter).toBe('2025-12-01T00:00:00.000Z');
+    expect(api.dueBefore).toBe('2025-12-31T23:59:59.999Z');
+    expect(api.dueMonth).toBeUndefined();
+    expect(api.status).toBe('done');
+  });
+
+  it('monthPick → handles a February (leap year) correctly', () => {
+    const api = toApiFilters({ due: 'monthPick', dueMonth: '2028-02' });
+    expect(api.dueAfter).toBe('2028-02-01T00:00:00.000Z');
+    expect(api.dueBefore).toBe('2028-02-29T23:59:59.999Z');
+  });
+
+  it('monthPick → no bounds when dueMonth is missing', () => {
+    expect(toApiFilters({ due: 'monthPick' })).toEqual({});
+  });
 });
