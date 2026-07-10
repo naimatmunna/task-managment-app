@@ -1,5 +1,5 @@
 import { format, isPast, isToday } from 'date-fns';
-import { Calendar, MessageSquare } from 'lucide-react';
+import { Calendar, MessageSquare, ListChecks, Paperclip } from 'lucide-react';
 import PriorityBadge from './PriorityBadge.jsx';
 import Avatar from '@/components/ui/Avatar.jsx';
 import { cn } from '@/lib/classNames.js';
@@ -9,6 +9,10 @@ export default function TaskCard({ task, assignee, team, onClick, dragging = fal
   const due = task.dueDate ? new Date(task.dueDate) : null;
   const overdue = due && task.status !== 'done' && isPast(due) && !isToday(due);
   const comments = (task.activity || []).filter((a) => a.type === 'commented').length;
+  const subtasks = task.subtasks || [];
+  const subtasksDone = subtasks.filter((s) => s.done).length;
+  const attachments = (task.attachments || []).length;
+  const subtasksComplete = subtasks.length > 0 && subtasksDone === subtasks.length;
 
   return (
     <div
@@ -43,6 +47,21 @@ export default function TaskCard({ task, assignee, team, onClick, dragging = fal
       <div className="flex items-center justify-between">
         <PriorityBadge priority={task.priority} />
         <div className="flex items-center gap-2">
+          {subtasks.length > 0 && (
+            <span
+              className={cn(
+                'flex items-center gap-0.5 text-xs',
+                subtasksComplete ? 'text-success-600 dark:text-success-500' : 'text-gray-400',
+              )}
+            >
+              <ListChecks className="h-3.5 w-3.5" /> {subtasksDone}/{subtasks.length}
+            </span>
+          )}
+          {attachments > 0 && (
+            <span className="flex items-center gap-0.5 text-xs text-gray-400">
+              <Paperclip className="h-3.5 w-3.5" /> {attachments}
+            </span>
+          )}
           {comments > 0 && (
             <span className="flex items-center gap-0.5 text-xs text-gray-400">
               <MessageSquare className="h-3.5 w-3.5" /> {comments}

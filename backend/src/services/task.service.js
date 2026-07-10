@@ -3,6 +3,7 @@ import teamRepository from '../repositories/team.repository.js';
 import membershipRepository from '../repositories/membership.repository.js';
 import userRepository from '../repositories/user.repository.js';
 import notificationService from './notification.service.js';
+import { getStorage } from '../storage/index.js';
 import { emitToOrg } from '../loaders/socket.js';
 import ApiError from '../utils/ApiError.js';
 import { TASK_STATUS, TASK_ACTIVITY, TASK_STATUS_VALUES, TASK_PRIORITY_VALUES } from '../constants/taskEnums.js';
@@ -172,7 +173,12 @@ class TaskService {
     if (patch.description !== undefined) task.description = patch.description;
     if (patch.priority !== undefined) task.priority = patch.priority;
     if (patch.teamId !== undefined) task.teamId = patch.teamId || null;
-    if (patch.dueDate !== undefined) task.dueDate = patch.dueDate || null;
+    if (patch.dueDate !== undefined) {
+      const nextDue = patch.dueDate || null;
+      // A changed deadline re-arms the reminder so the new date is announced.
+      if (String(nextDue) !== String(task.dueDate || '')) task.reminderSentFor = null;
+      task.dueDate = nextDue;
+    }
     if (patch.labels !== undefined) task.labels = patch.labels;
     if (patch.order !== undefined) task.order = patch.order;
 
@@ -219,14 +225,114 @@ class TaskService {
     return { id };
   }
 
-  async addComment(orgId, actorId, id, message) {
+  async addComment(orgId, actorId, id, message, mentions = []) {
     const task = await taskRepository.findByIdInOrg(id, orgId);
     if (!task) throw ApiError.notFound('Task not found');
     task.activity.push({ type: TASK_ACTIVITY.COMMENTED, actorId, message });
     await task.save();
-    const updated = await this.get(orgId, task.id);
+    const updated = await this.reloadAndEmit(orgId, task.id);
+    if (mentions?.length) await this.notifyMentions(orgId, updated, actorId, mentions, message);
+    return updated;
+  }
+
+  /** Re-fetch the populated task, broadcast the change, and return it. */
+  async reloadAndEmit(orgId, id) {
+    const updated = await this.get(orgId, id);
     emitToOrg(orgId, 'task:updated', { task: updated });
     return updated;
+  }
+
+  // ---- Checklist / subtasks ------------------------------------------------
+
+  async addSubtask(orgId, id, title) {
+    const task = await taskRepository.findByIdInOrg(id, orgId);
+    if (!task) throw ApiError.notFound('Task not found');
+    task.subtasks.push({ title });
+    await task.save();
+    return this.reloadAndEmit(orgId, task.id);
+  }
+
+  async updateSubtask(orgId, id, subId, patch) {
+    const task = await taskRepository.findByIdInOrg(id, orgId);
+    if (!task) throw ApiError.notFound('Task not found');
+    const sub = task.subtasks.id(subId);
+    if (!sub) throw ApiError.notFound('Subtask not found');
+    if (patch.title !== undefined) sub.title = patch.title;
+    if (patch.done !== undefined) sub.done = patch.done;
+    await task.save();
+    return this.reloadAndEmit(orgId, task.id);
+  }
+
+  async removeSubtask(orgId, id, subId) {
+    const task = await taskRepository.findByIdInOrg(id, orgId);
+    if (!task) throw ApiError.notFound('Task not found');
+    if (!task.subtasks.id(subId)) throw ApiError.notFound('Subtask not found');
+    task.subtasks.pull(subId);
+    await task.save();
+    return this.reloadAndEmit(orgId, task.id);
+  }
+
+  // ---- Attachments ---------------------------------------------------------
+
+  async addAttachment(orgId, actorId, id, file) {
+    const task = await taskRepository.findByIdInOrg(id, orgId);
+    if (!task) throw ApiError.notFound('Task not found');
+    const { url, publicId } = await getStorage().upload(file.buffer, {
+      filename: file.originalname,
+      folder: `tasks/${orgId}`,
+    });
+    task.attachments.push({
+      name: file.originalname,
+      url,
+      publicId,
+      size: file.size,
+      mime: file.mimetype,
+      uploadedById: actorId,
+    });
+    await task.save();
+    return this.reloadAndEmit(orgId, task.id);
+  }
+
+  async removeAttachment(orgId, id, attId) {
+    const task = await taskRepository.findByIdInOrg(id, orgId);
+    if (!task) throw ApiError.notFound('Task not found');
+    const att = task.attachments.id(attId);
+    if (!att) throw ApiError.notFound('Attachment not found');
+    if (att.publicId) {
+      try {
+        await getStorage().remove(att.publicId);
+      } catch {
+        /* a missing/failed storage delete must not block removing the record */
+      }
+    }
+    task.attachments.pull(attId);
+    await task.save();
+    return this.reloadAndEmit(orgId, task.id);
+  }
+
+  /** Notify each still-active, non-self mentioned user (in-app + email). Best-effort. */
+  async notifyMentions(orgId, task, actorId, mentions, message) {
+    try {
+      const active = await membershipRepository.activeUserIds(orgId);
+      const unique = [...new Set(mentions.map(String))].filter(
+        (uid) => uid !== String(actorId) && active.has(uid),
+      );
+      if (!unique.length) return;
+      const actor = await userRepository.findById(actorId);
+      await Promise.all(
+        unique.map((userId) =>
+          notificationService.notifyTaskMention({
+            organizationId: orgId,
+            task,
+            userId,
+            actorName: actor?.name,
+            message,
+          }),
+        ),
+      );
+    } catch {
+      /* mention notifications are best-effort */
+    }
   }
 
   /** In-app + email notification to the newly-assigned user. Never blocks the request. */

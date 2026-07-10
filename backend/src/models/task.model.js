@@ -19,6 +19,48 @@ const activitySchema = new Schema(
   { _id: false },
 );
 
+/** A single checklist item. Keeps its own `_id` so it can be toggled/removed. */
+const subtaskSchema = new Schema(
+  {
+    title: { type: String, required: true, trim: true, maxlength: 300 },
+    done: { type: Boolean, default: false },
+    createdAt: { type: Date, default: Date.now },
+  },
+  {
+    toJSON: {
+      virtuals: true,
+      transform(_doc, ret) {
+        ret.id = ret._id;
+        delete ret._id;
+        return ret;
+      },
+    },
+  },
+);
+
+/** A file attached to a task. `publicId` lets the storage layer delete it later. */
+const attachmentSchema = new Schema(
+  {
+    name: { type: String, required: true, maxlength: 300 },
+    url: { type: String, required: true },
+    publicId: { type: String, default: null },
+    size: { type: Number, default: 0 },
+    mime: { type: String, default: '' },
+    uploadedById: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+    createdAt: { type: Date, default: Date.now },
+  },
+  {
+    toJSON: {
+      virtuals: true,
+      transform(_doc, ret) {
+        ret.id = ret._id;
+        delete ret._id;
+        return ret;
+      },
+    },
+  },
+);
+
 /**
  * The core "todo". Always scoped to an organization; optionally to a team.
  * `order` is a float so cards can be re-sorted within a column without
@@ -38,7 +80,12 @@ const taskSchema = new Schema(
     completedAt: { type: Date, default: null },
     labels: { type: [String], default: [] },
     order: { type: Number, default: 0 },
+    subtasks: { type: [subtaskSchema], default: [] },
+    attachments: { type: [attachmentSchema], default: [] },
     activity: { type: [activitySchema], default: [] },
+    // Marks the due date we last sent a reminder for, so the reminder job never
+    // notifies twice for the same deadline (reset when the due date changes).
+    reminderSentFor: { type: Date, default: null },
   },
   {
     timestamps: true,

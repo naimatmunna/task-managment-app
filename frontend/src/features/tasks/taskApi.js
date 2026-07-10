@@ -44,12 +44,48 @@ export const taskApi = apiSlice.injectEndpoints({
       }),
     }),
     commentTask: builder.mutation({
-      query: ({ id, message }) => ({ url: `/tasks/${id}/comment`, method: 'POST', body: { message } }),
+      query: ({ id, message, mentions }) => ({
+        url: `/tasks/${id}/comment`,
+        method: 'POST',
+        body: { message, ...(mentions?.length ? { mentions } : {}) },
+      }),
       invalidatesTags: (res, err, { id }) => [{ type: 'Task', id }],
     }),
     deleteTask: builder.mutation({
       query: (id) => ({ url: `/tasks/${id}`, method: 'DELETE' }),
       invalidatesTags: ['Task'],
+    }),
+
+    // ---- Checklist / subtasks ----
+    addSubtask: builder.mutation({
+      query: ({ id, title }) => ({ url: `/tasks/${id}/subtasks`, method: 'POST', body: { title } }),
+      invalidatesTags: (res, err, { id }) => ['Task', { type: 'Task', id }],
+    }),
+    updateSubtask: builder.mutation({
+      query: ({ id, subId, ...body }) => ({
+        url: `/tasks/${id}/subtasks/${subId}`,
+        method: 'PATCH',
+        body,
+      }),
+      invalidatesTags: (res, err, { id }) => ['Task', { type: 'Task', id }],
+    }),
+    deleteSubtask: builder.mutation({
+      query: ({ id, subId }) => ({ url: `/tasks/${id}/subtasks/${subId}`, method: 'DELETE' }),
+      invalidatesTags: (res, err, { id }) => ['Task', { type: 'Task', id }],
+    }),
+
+    // ---- Attachments ----
+    addAttachment: builder.mutation({
+      query: ({ id, file }) => {
+        const form = new FormData();
+        form.append('file', file);
+        return { url: `/tasks/${id}/attachments`, method: 'POST', body: form };
+      },
+      invalidatesTags: (res, err, { id }) => ['Task', { type: 'Task', id }],
+    }),
+    deleteAttachment: builder.mutation({
+      query: ({ id, attId }) => ({ url: `/tasks/${id}/attachments/${attId}`, method: 'DELETE' }),
+      invalidatesTags: (res, err, { id }) => ['Task', { type: 'Task', id }],
     }),
   }),
 });
@@ -63,4 +99,9 @@ export const {
   useReorderTaskMutation,
   useCommentTaskMutation,
   useDeleteTaskMutation,
+  useAddSubtaskMutation,
+  useUpdateSubtaskMutation,
+  useDeleteSubtaskMutation,
+  useAddAttachmentMutation,
+  useDeleteAttachmentMutation,
 } = taskApi;

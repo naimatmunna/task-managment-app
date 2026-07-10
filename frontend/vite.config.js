@@ -16,6 +16,8 @@ export default defineConfig(({ mode }) => {
       port: 5173,
       proxy: {
         '/api': { target: proxyTarget, changeOrigin: true },
+        // Locally-stored task attachments are served from the API origin.
+        '/uploads': { target: proxyTarget, changeOrigin: true },
       },
     },
     build: { outDir: 'dist', sourcemap: false, chunkSizeWarningLimit: 700 },

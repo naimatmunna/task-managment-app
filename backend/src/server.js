@@ -7,6 +7,7 @@ import { initCache, getRedisClient } from './cache/index.js';
 import { initQueue, closeQueue } from './queues/index.js';
 import { initStorage } from './storage/index.js';
 import { initSocket } from './loaders/socket.js';
+import { startScheduler, stopScheduler } from './loaders/scheduler.js';
 
 /**
  * Composition root. Initializes infrastructure (DB, cache, queue, storage,
@@ -21,6 +22,7 @@ const start = async () => {
   const app = createApp();
   const server = http.createServer(app);
   await initSocket(server);
+  startScheduler();
 
   server.listen(config.port, () => {
     logger.info(`🚀 Server [${config.env}] listening on port ${config.port}`);
@@ -31,6 +33,7 @@ const start = async () => {
     logger.warn(`${signal} received — shutting down gracefully`);
     server.close(async () => {
       try {
+        stopScheduler();
         await closeQueue();
         await getRedisClient()?.quit();
         await disconnectDatabase();

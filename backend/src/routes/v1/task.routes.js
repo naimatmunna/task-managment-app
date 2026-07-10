@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import multer from 'multer';
 import * as taskController from '../../controllers/task.controller.js';
 import { validate } from '../../middlewares/validate.js';
 import { authenticate } from '../../middlewares/authenticate.js';
@@ -11,9 +12,20 @@ import {
   taskIdSchema,
   listTasksSchema,
   exportTasksSchema,
+  addSubtaskSchema,
+  updateSubtaskSchema,
+  subtaskIdSchema,
+  attachmentIdSchema,
 } from '../../validators/task.validator.js';
 
 const router = Router();
+
+// Attachments are buffered in memory then handed to the storage layer
+// (local disk / Cloudinary). 10 MB per file.
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+});
 
 // All task routes are authenticated + org-scoped. Any active member may manage
 // tasks in their org (finer per-task rules can be layered on later).
@@ -28,5 +40,14 @@ router.patch('/:id', validate(updateTaskSchema), taskController.updateTask);
 router.post('/:id/reorder', validate(reorderSchema), taskController.reorderTask);
 router.post('/:id/comment', validate(commentSchema), taskController.commentTask);
 router.delete('/:id', validate(taskIdSchema), taskController.deleteTask);
+
+// Checklist / subtasks
+router.post('/:id/subtasks', validate(addSubtaskSchema), taskController.addSubtask);
+router.patch('/:id/subtasks/:subId', validate(updateSubtaskSchema), taskController.updateSubtask);
+router.delete('/:id/subtasks/:subId', validate(subtaskIdSchema), taskController.deleteSubtask);
+
+// Attachments — multer parses the multipart body before param validation runs.
+router.post('/:id/attachments', upload.single('file'), validate(taskIdSchema), taskController.addAttachment);
+router.delete('/:id/attachments/:attId', validate(attachmentIdSchema), taskController.deleteAttachment);
 
 export default router;

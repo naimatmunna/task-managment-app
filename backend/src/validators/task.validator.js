@@ -42,11 +42,40 @@ export const reorderSchema = {
 
 export const commentSchema = {
   params: z.object({ id: objectId }),
-  body: z.object({ message: z.string().min(1).max(2000) }),
+  body: z.object({
+    message: z.string().min(1).max(2000),
+    // User ids @-mentioned in the comment; each is notified.
+    mentions: z.array(objectId).max(20).optional(),
+  }),
 };
 
 export const taskIdSchema = {
   params: z.object({ id: objectId }),
+};
+
+export const addSubtaskSchema = {
+  params: z.object({ id: objectId }),
+  body: z.object({ title: z.string().min(1, 'Title is required').max(300) }),
+};
+
+export const updateSubtaskSchema = {
+  params: z.object({ id: objectId, subId: objectId }),
+  body: z
+    .object({
+      title: z.string().min(1).max(300).optional(),
+      done: z.boolean().optional(),
+    })
+    .refine((b) => b.title !== undefined || b.done !== undefined, {
+      message: 'Nothing to update',
+    }),
+};
+
+export const subtaskIdSchema = {
+  params: z.object({ id: objectId, subId: objectId }),
+};
+
+export const attachmentIdSchema = {
+  params: z.object({ id: objectId, attId: objectId }),
 };
 
 export const listTasksSchema = {

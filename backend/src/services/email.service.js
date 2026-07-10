@@ -131,6 +131,45 @@ class EmailService {
     });
   }
 
+  sendTaskDueSoonEmail(to, { taskTitle, dueDate, overdue, link }) {
+    const url = `${config.clientUrl}${link || '/app/board'}`;
+    const when = dueDate ? new Date(dueDate).toLocaleDateString('en-US', { dateStyle: 'medium' }) : '';
+    return this.send({
+      to,
+      subject: overdue ? `Overdue: ${taskTitle}` : `Due soon: ${taskTitle}`,
+      html: this.wrap(
+        overdue ? 'A task is overdue' : 'A task is due soon',
+        `<p>Your task ${overdue ? 'was due' : 'is due'}${when ? ` on <strong>${when}</strong>` : ' soon'}:</p>
+         <p style="font-size:16px;font-weight:600;color:#111827;margin:16px 0;">${taskTitle}</p>
+         <div style="margin:24px 0;">
+           <a href="${url}" style="display:inline-block;background:#4f46e5;color:#fff;text-decoration:none;
+             padding:12px 22px;border-radius:10px;font-weight:600;">View task</a>
+         </div>`,
+      ),
+      text: `${overdue ? 'Overdue' : 'Due soon'}: "${taskTitle}"${when ? ` (${when})` : ''}. View: ${url}`,
+    });
+  }
+
+  sendMentionEmail(to, { taskTitle, actorName, message, link }) {
+    const url = `${config.clientUrl}${link || '/app/board'}`;
+    const snippet = (message || '').slice(0, 280);
+    return this.send({
+      to,
+      subject: `${actorName || 'Someone'} mentioned you on “${taskTitle}”`,
+      html: this.wrap(
+        'You were mentioned',
+        `<p><strong>${actorName || 'Someone'}</strong> mentioned you on <strong>${taskTitle}</strong>:</p>
+         <blockquote style="margin:16px 0;padding:12px 16px;border-left:3px solid #4f46e5;background:#f4f5f7;
+           border-radius:8px;color:#374151;">${snippet}</blockquote>
+         <div style="margin:24px 0;">
+           <a href="${url}" style="display:inline-block;background:#4f46e5;color:#fff;text-decoration:none;
+             padding:12px 22px;border-radius:10px;font-weight:600;">View comment</a>
+         </div>`,
+      ),
+      text: `${actorName || 'Someone'} mentioned you on "${taskTitle}": ${snippet}. View: ${url}`,
+    });
+  }
+
   sendReportEmail(to, { subject, summaryHtml, attachments }) {
     return this.send({
       to,

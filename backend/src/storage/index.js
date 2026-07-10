@@ -17,6 +17,8 @@ class LocalStorage {
     await fs.mkdir(LOCAL_DIR, { recursive: true });
   }
   async upload(buffer, { filename = nanoid() } = {}) {
+    // Ensure the target dir exists even if init() wasn't run (e.g. tests).
+    await fs.mkdir(LOCAL_DIR, { recursive: true });
     const safe = `${Date.now()}-${filename}`.replace(/[^\w.-]/g, '_');
     const dest = path.join(LOCAL_DIR, safe);
     await fs.writeFile(dest, buffer);

@@ -1,3 +1,4 @@
+import path from 'node:path';
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
@@ -57,6 +58,15 @@ export const createApp = () => {
 
   // Docs (public)
   mountSwagger(app);
+
+  // Locally-stored task attachments (served from disk when Cloudinary is off).
+  // `crossOriginResourcePolicy` is relaxed so the SPA can load them cross-origin
+  // in dev; in production they're same-origin (or absolute Cloudinary URLs).
+  app.use(
+    '/uploads',
+    helmet.crossOriginResourcePolicy({ policy: 'cross-origin' }),
+    express.static(path.resolve('uploads')),
+  );
 
   // Rate limiting + versioned API
   app.use(config.apiPrefix, apiLimiter, routes);
