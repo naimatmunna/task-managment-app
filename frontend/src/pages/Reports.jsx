@@ -6,10 +6,11 @@ import {
   PieChart,
   Pie,
   Cell,
-  AreaChart,
-  Area,
   BarChart,
   Bar,
+  ComposedChart,
+  Line,
+  Legend,
   XAxis,
   YAxis,
   Tooltip,
@@ -25,6 +26,8 @@ import {
   AlertTriangle,
   Target,
   CalendarRange,
+  Clock,
+  UserX,
 } from 'lucide-react';
 import { useReportQuery, useEmailReportMutation, downloadReport } from '@/features/reports/reportApi.js';
 import { useTaskFilters } from '@/hooks/useTaskFilters.js';
@@ -49,6 +52,12 @@ const STATUS_COLORS = {
   in_progress: '#6a4fe6',
   in_review: '#f59e0b',
   done: '#10b981',
+};
+const PRIORITY_COLORS = {
+  low: '#a8a39d',
+  medium: '#3b82f6',
+  high: '#f59e0b',
+  urgent: '#ef4444',
 };
 
 const RANGE_OPTS = [
@@ -155,6 +164,12 @@ export default function Reports() {
   const statusData = (report?.byStatus || [])
     .filter((d) => d.count > 0)
     .map((d) => ({ name: STATUS_LABEL[d.status], value: d.count, key: d.status }));
+  const priorityData = (report?.byPriority || [])
+    .filter((d) => d.count > 0)
+    .map((d) => ({ name: d.priority, count: d.count, key: d.priority }));
+  const teamData = (report?.byTeam || []).filter((d) => d.total > 0);
+  const hasTeams = teamData.some((d) => d.team !== 'No team');
+  const throughput = report?.throughputTrend || [];
 
   const rangeLabel = report
     ? `${format(new Date(report.range.from), 'MMM d')} – ${format(new Date(report.range.to), 'MMM d, yyyy')}`
@@ -244,8 +259,8 @@ export default function Reports() {
         <Card className="p-10 text-center text-sm text-gray-400">Pick a start and end date for a custom report.</Card>
       ) : isLoading ? (
         <div className="space-y-6">
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
-            {Array.from({ length: 5 }).map((_, i) => (
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-7">
+            {Array.from({ length: 7 }).map((_, i) => (
               <Skeleton key={i} className="h-[74px]" />
             ))}
           </div>
@@ -255,13 +270,29 @@ export default function Reports() {
         <Card className="p-10 text-center text-sm text-red-500">{getApiErrorMessage(error)}</Card>
       ) : (
         <div className="space-y-6">
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-7">
             <SummaryCard label="Total" value={s.total} icon={Layers} tint="bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300" />
             <SummaryCard label="Completed" value={s.completed} icon={CheckCircle2} accent="text-emerald-600" tint="bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400" />
             <SummaryCard label="In progress" value={s.inProgress} icon={Timer} accent="text-brand-600" tint="bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-300" />
             <SummaryCard label="Overdue" value={s.overdue} icon={AlertTriangle} accent="text-red-600" tint="bg-red-50 text-red-600 dark:bg-red-500/15 dark:text-red-400" />
+            <SummaryCard label="Unassigned" value={s.unassigned} icon={UserX} tint="bg-amber-50 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400" />
+            <SummaryCard label="Avg cycle" value={s.avgCompletionDays ? `${s.avgCompletionDays}d` : '—'} icon={Clock} tint="bg-violet-50 text-violet-600 dark:bg-violet-500/15 dark:text-violet-300" />
             <SummaryCard label="Completion" value={`${s.completionRate}%`} icon={Target} tint="bg-info-50 text-info-600 dark:bg-info-500/15 dark:text-info-500" />
           </div>
+
+          <ChartCard title="Throughput — created vs completed" empty={throughput.length === 0}>
+            <ResponsiveContainer>
+              <ComposedChart data={throughput}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgb(0 0 0 / 0.06)" vertical={false} />
+                <XAxis dataKey="date" tickFormatter={(d) => format(new Date(d), 'MMM d')} fontSize={11} stroke="#a8a39d" tickLine={false} axisLine={false} />
+                <YAxis allowDecimals={false} fontSize={11} width={24} stroke="#a8a39d" tickLine={false} axisLine={false} />
+                <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgb(106 79 230 / 0.06)' }} />
+                <Legend wrapperStyle={{ fontSize: 12 }} iconType="circle" />
+                <Bar dataKey="created" name="Created" fill="#c9c3fb" radius={[4, 4, 0, 0]} maxBarSize={26} />
+                <Line type="monotone" dataKey="completed" name="Completed" stroke="#10b981" strokeWidth={2.5} dot={false} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </ChartCard>
 
           <div className="grid gap-6 lg:grid-cols-3">
             <ChartCard title="Tasks by status" empty={statusData.length === 0}>
@@ -277,21 +308,19 @@ export default function Reports() {
               </ResponsiveContainer>
             </ChartCard>
 
-            <ChartCard title="Completion trend" empty={(report.completionTrend || []).length === 0}>
+            <ChartCard title="Tasks by priority" empty={priorityData.length === 0}>
               <ResponsiveContainer>
-                <AreaChart data={report.completionTrend}>
-                  <defs>
-                    <linearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#6a4fe6" stopOpacity={0.35} />
-                      <stop offset="95%" stopColor="#6a4fe6" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
+                <BarChart data={priorityData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgb(0 0 0 / 0.06)" vertical={false} />
-                  <XAxis dataKey="date" tickFormatter={(d) => format(new Date(d), 'MMM d')} fontSize={11} stroke="#a8a39d" tickLine={false} axisLine={false} />
+                  <XAxis dataKey="name" tickFormatter={(v) => v.charAt(0).toUpperCase() + v.slice(1)} fontSize={11} stroke="#a8a39d" tickLine={false} axisLine={false} />
                   <YAxis allowDecimals={false} fontSize={11} width={24} stroke="#a8a39d" tickLine={false} axisLine={false} />
-                  <Tooltip content={<ChartTooltip />} />
-                  <Area type="monotone" dataKey="count" name="Completed" stroke="#6a4fe6" fill="url(#grad)" strokeWidth={2.5} />
-                </AreaChart>
+                  <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgb(106 79 230 / 0.06)' }} />
+                  <Bar dataKey="count" name="Tasks" radius={[5, 5, 0, 0]} maxBarSize={44}>
+                    {priorityData.map((d) => (
+                      <Cell key={d.key} fill={PRIORITY_COLORS[d.key]} />
+                    ))}
+                  </Bar>
+                </BarChart>
               </ResponsiveContainer>
             </ChartCard>
 
@@ -307,6 +336,21 @@ export default function Reports() {
               </ResponsiveContainer>
             </ChartCard>
           </div>
+
+          {hasTeams && (
+            <ChartCard title="Workload by team" empty={teamData.length === 0}>
+              <ResponsiveContainer>
+                <BarChart data={teamData} layout="vertical" margin={{ left: 10 }} barGap={2}>
+                  <XAxis type="number" allowDecimals={false} fontSize={11} stroke="#a8a39d" tickLine={false} axisLine={false} />
+                  <YAxis type="category" dataKey="team" width={100} fontSize={11} stroke="#a8a39d" tickLine={false} axisLine={false} />
+                  <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgb(106 79 230 / 0.06)' }} />
+                  <Legend wrapperStyle={{ fontSize: 12 }} iconType="circle" />
+                  <Bar dataKey="total" name="Total" fill="#dbd8fd" radius={[0, 5, 5, 0]} />
+                  <Bar dataKey="completed" name="Completed" fill="#6a4fe6" radius={[0, 5, 5, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </ChartCard>
+          )}
 
           <Card className="overflow-hidden">
             <div className="border-b border-gray-200/70 px-5 py-3 text-sm font-semibold dark:border-white/10">

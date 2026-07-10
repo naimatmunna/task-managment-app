@@ -29,7 +29,7 @@ class NotificationService {
     const userId = task.assigneeId;
     if (!userId) return null;
 
-    const link = `/app/board?task=${task.id}`;
+    const link = `/app/tasks/${task.id}`;
     const notification = await notificationRepository.create({
       organizationId,
       userId,
@@ -58,7 +58,7 @@ class NotificationService {
     if (!userId) return null;
 
     const overdue = task.dueDate && new Date(task.dueDate) < now;
-    const link = `/app/board?task=${task.id}`;
+    const link = `/app/tasks/${task.id}`;
     const notification = await notificationRepository.create({
       organizationId,
       userId,
@@ -87,7 +87,7 @@ class NotificationService {
   async notifyTaskMention({ organizationId, task, userId, actorName, message }) {
     if (!userId) return null;
 
-    const link = `/app/board?task=${task.id}`;
+    const link = `/app/tasks/${task.id}`;
     const notification = await notificationRepository.create({
       organizationId,
       userId,

@@ -4,7 +4,7 @@ import teamRepository from '../repositories/team.repository.js';
 import emailService from './email.service.js';
 import ApiError from '../utils/ApiError.js';
 import config from '../config/index.js';
-import { TASK_STATUS, TASK_STATUS_VALUES } from '../constants/taskEnums.js';
+import { TASK_STATUS, TASK_STATUS_VALUES, TASK_PRIORITY_VALUES } from '../constants/taskEnums.js';
 
 const DAY = 24 * 60 * 60 * 1000;
 const startOfDay = (d) => {
@@ -58,28 +58,60 @@ class ReportService {
     // task list filter/highlight.
     const todayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
     const byStatus = Object.fromEntries(TASK_STATUS_VALUES.map((s) => [s, 0]));
+    const byPriority = Object.fromEntries(TASK_PRIORITY_VALUES.map((p) => [p, 0]));
     const workload = new Map();
-    const trend = new Map();
+    const teams = new Map();
+    const completedTrend = new Map();
+    const createdTrend = new Map();
     let completed = 0;
     let overdue = 0;
+    let unassigned = 0;
+    let completionDaysSum = 0;
+    let completionDaysCount = 0;
 
     for (const t of tasks) {
       byStatus[t.status] = (byStatus[t.status] || 0) + 1;
+      byPriority[t.priority] = (byPriority[t.priority] || 0) + 1;
+
+      const createdDay = startOfDay(t.createdAt).toISOString().slice(0, 10);
+      createdTrend.set(createdDay, (createdTrend.get(createdDay) || 0) + 1);
+
       if (t.status === TASK_STATUS.DONE) {
         completed += 1;
         if (t.completedAt) {
           const day = startOfDay(t.completedAt).toISOString().slice(0, 10);
-          trend.set(day, (trend.get(day) || 0) + 1);
+          completedTrend.set(day, (completedTrend.get(day) || 0) + 1);
+          // Cycle time: days from creation to completion.
+          const days = (new Date(t.completedAt) - new Date(t.createdAt)) / DAY;
+          if (days >= 0) {
+            completionDaysSum += days;
+            completionDaysCount += 1;
+          }
         }
       }
       if (t.dueDate && t.status !== TASK_STATUS.DONE && new Date(t.dueDate) < todayStart) overdue += 1;
+      if (!t.assigneeId) unassigned += 1;
 
       const key = t.assigneeId ? t.assigneeId.name : 'Unassigned';
       const w = workload.get(key) || { assignee: key, total: 0, completed: 0 };
       w.total += 1;
       if (t.status === TASK_STATUS.DONE) w.completed += 1;
       workload.set(key, w);
+
+      const teamName = t.teamId?.name || 'No team';
+      const tw = teams.get(teamName) || { team: teamName, total: 0, completed: 0 };
+      tw.total += 1;
+      if (t.status === TASK_STATUS.DONE) tw.completed += 1;
+      teams.set(teamName, tw);
     }
+
+    // Merge created + completed counts onto a single sorted date axis.
+    const trendDays = [...new Set([...createdTrend.keys(), ...completedTrend.keys()])].sort();
+    const throughputTrend = trendDays.map((date) => ({
+      date,
+      created: createdTrend.get(date) || 0,
+      completed: completedTrend.get(date) || 0,
+    }));
 
     const total = tasks.length;
     const summary = {
@@ -87,7 +119,9 @@ class ReportService {
       completed,
       inProgress: byStatus[TASK_STATUS.IN_PROGRESS] || 0,
       overdue,
+      unassigned,
       completionRate: total ? Math.round((completed / total) * 100) : 0,
+      avgCompletionDays: completionDaysCount ? Math.round((completionDaysSum / completionDaysCount) * 10) / 10 : 0,
     };
 
     return {
@@ -96,8 +130,11 @@ class ReportService {
       scope: query.scope || 'org',
       summary,
       byStatus: TASK_STATUS_VALUES.map((s) => ({ status: s, count: byStatus[s] || 0 })),
-      completionTrend: [...trend.entries()].sort().map(([date, count]) => ({ date, count })),
+      byPriority: TASK_PRIORITY_VALUES.map((p) => ({ priority: p, count: byPriority[p] || 0 })),
+      completionTrend: [...completedTrend.entries()].sort().map(([date, count]) => ({ date, count })),
+      throughputTrend,
       workloadByAssignee: [...workload.values()].sort((a, b) => b.total - a.total),
+      byTeam: [...teams.values()].sort((a, b) => b.total - a.total),
       tasks: tasks.map((t) => ({
         id: t.id,
         title: t.title,

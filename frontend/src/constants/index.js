@@ -33,6 +33,7 @@ export const ROUTES = Object.freeze({
   APP: '/app',
   BOARD: '/app/board',
   LIST: '/app/list',
+  TASK: '/app/tasks/:id',
   TEAMS: '/app/teams',
   REPORTS: '/app/reports',
   RELEASES: '/app/releases',
@@ -42,6 +43,9 @@ export const ROUTES = Object.freeze({
 
   NOT_FOUND: '/404',
 });
+
+/** Build the concrete path to a task's full-detail page. */
+export const taskPath = (id) => `/app/tasks/${id}`;
 
 export const TASK_STATUS = Object.freeze({
   BACKLOG: 'backlog',

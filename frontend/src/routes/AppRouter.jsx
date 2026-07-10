@@ -19,6 +19,7 @@ import AcceptInvite from '@/pages/AcceptInvite.jsx';
 // App pages are code-split so heavy deps (recharts, dnd-kit) load on demand.
 const Board = lazy(() => import('@/pages/Board.jsx'));
 const TasksList = lazy(() => import('@/pages/TasksList.jsx'));
+const TaskDetail = lazy(() => import('@/pages/TaskDetail.jsx'));
 const Teams = lazy(() => import('@/pages/Teams.jsx'));
 const Reports = lazy(() => import('@/pages/Reports.jsx'));
 const ReleaseNotes = lazy(() => import('@/pages/ReleaseNotes.jsx'));
@@ -60,6 +61,7 @@ export default function AppRouter() {
               <Route index element={<Navigate to={ROUTES.BOARD} replace />} />
               <Route path={ROUTES.BOARD} element={<Board />} />
               <Route path={ROUTES.LIST} element={<TasksList />} />
+              <Route path={ROUTES.TASK} element={<TaskDetail />} />
               <Route path={ROUTES.TEAMS} element={<Teams />} />
               <Route path={ROUTES.REPORTS} element={<Reports />} />
               <Route path={ROUTES.RELEASES} element={<ReleaseNotes />} />
