@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import { useCreateTaskMutation } from '@/features/tasks/taskApi.js';
 import { useDirectory } from '@/hooks/useDirectory.js';
@@ -15,9 +16,9 @@ export default function TaskFormModal({ open, onClose, defaultStatus = 'todo' })
   const { members, teams } = useDirectory();
   const [create, { isLoading }] = useCreateTaskMutation();
 
-  // Lazy initializer so the form always opens clean. Only `status` is seeded
-  // (from the column it opened on); assignee, team and due date stay empty —
-  // a new task should not silently inherit today's date or the first team.
+  // Lazy initializer so the form always opens clean. `status` is seeded from the
+  // column it opened on, and the due date defaults to today (yyyy-MM-dd — the
+  // shape DatePicker expects); the user can clear or change it.
   const [form, setForm] = useState(() => ({
     title: '',
     description: '',
@@ -25,7 +26,7 @@ export default function TaskFormModal({ open, onClose, defaultStatus = 'todo' })
     priority: TASK_PRIORITY.MEDIUM,
     assigneeId: '',
     teamId: '',
-    dueDate: '',
+    dueDate: format(new Date(), 'yyyy-MM-dd'),
     labels: '',
   }));
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
