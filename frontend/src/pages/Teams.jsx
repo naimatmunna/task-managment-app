@@ -20,6 +20,8 @@ import Modal from '@/components/ui/Modal.jsx';
 import Avatar from '@/components/ui/Avatar.jsx';
 import EmptyState from '@/components/ui/EmptyState.jsx';
 import Skeleton from '@/components/ui/Skeleton.jsx';
+import Pagination from '@/components/ui/Pagination.jsx';
+import { useClientPagination } from '@/hooks/useClientPagination.js';
 import { cn } from '@/lib/classNames.js';
 
 const SWATCHES = ['#6366f1', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#8b5cf6', '#64748b'];
@@ -130,6 +132,7 @@ export default function Teams() {
     () => Object.fromEntries(memberOptions.map((m) => [m.userId, m])),
     [memberOptions],
   );
+  const pag = useClientPagination(teams || [], 9);
 
   const onDelete = async (team) => {
     if (!window.confirm(`Delete team "${team.name}"? Tasks stay but lose their team.`)) return;
@@ -170,8 +173,9 @@ export default function Teams() {
           action={canManage && <Button onClick={() => setModal({ open: true, team: null })}><Plus className="h-4 w-4" /> New team</Button>}
         />
       ) : (
+        <>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {teams.map((team) => {
+          {pag.pageItems.map((team) => {
             const lead = team.leadId ? nameById[String(team.leadId)] : null;
             return (
               <Card key={team.id} className="flex flex-col p-5">
@@ -217,6 +221,17 @@ export default function Teams() {
             );
           })}
         </div>
+        <Pagination
+          page={pag.page}
+          pageSize={pag.pageSize}
+          total={pag.total}
+          totalPages={pag.totalPages}
+          onChange={pag.setPage}
+          onPageSizeChange={pag.setPageSize}
+          pageSizeOptions={[9, 18, 36]}
+          label="teams"
+        />
+        </>
       )}
 
       {modal.open && (

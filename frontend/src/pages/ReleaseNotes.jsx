@@ -27,6 +27,8 @@ import Card from '@/components/ui/Card.jsx';
 import Button from '@/components/ui/Button.jsx';
 import Skeleton from '@/components/ui/Skeleton.jsx';
 import EmptyState from '@/components/ui/EmptyState.jsx';
+import Pagination from '@/components/ui/Pagination.jsx';
+import { useClientPagination } from '@/hooks/useClientPagination.js';
 import GenerateReleaseModal from '@/components/releases/GenerateReleaseModal.jsx';
 import EditReleaseModal from '@/components/releases/EditReleaseModal.jsx';
 import ReleaseViewPanel from '@/components/releases/ReleaseViewPanel.jsx';
@@ -55,6 +57,7 @@ export default function ReleaseNotes() {
   const [genOpen, setGenOpen] = useState(false);
   const [editNote, setEditNote] = useState(null);
   const [viewId, setViewId] = useState(null);
+  const pag = useClientPagination(notes || [], 10);
 
   const onRegenerate = async (note) => {
     try {
@@ -118,8 +121,9 @@ export default function ReleaseNotes() {
           }
         />
       ) : (
+        <>
         <div className="space-y-3">
-          {notes.map((note) => (
+          {pag.pageItems.map((note) => (
             <Card key={note.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
               <button onClick={() => setViewId(note.id)} className="min-w-0 flex-1 text-left">
                 <div className="flex flex-wrap items-center gap-2">
@@ -154,6 +158,17 @@ export default function ReleaseNotes() {
             </Card>
           ))}
         </div>
+        <Pagination
+          page={pag.page}
+          pageSize={pag.pageSize}
+          total={pag.total}
+          totalPages={pag.totalPages}
+          onChange={pag.setPage}
+          onPageSizeChange={pag.setPageSize}
+          pageSizeOptions={[10, 25, 50]}
+          label="notes"
+        />
+        </>
       )}
 
       {genOpen && <GenerateReleaseModal open onClose={() => setGenOpen(false)} onCreated={(id) => setViewId(id)} />}

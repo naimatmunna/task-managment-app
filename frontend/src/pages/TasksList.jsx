@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { format, isPast, isToday } from 'date-fns';
-import { Plus, ArrowUpDown, ChevronLeft, ChevronRight, Download } from 'lucide-react';
+import { Plus, ArrowUpDown, Download } from 'lucide-react';
 import { useTaskListQuery } from '@/features/tasks/taskApi.js';
 import { toApiFilters } from '@/features/tasks/taskQuery.js';
 import { useTaskFilters } from '@/hooks/useTaskFilters.js';
@@ -17,6 +17,7 @@ import TaskFilters from '@/components/tasks/TaskFilters.jsx';
 import TaskFormModal from '@/components/tasks/TaskFormModal.jsx';
 import TaskDetailPanel from '@/components/tasks/TaskDetailPanel.jsx';
 import ExportTasksModal from '@/components/tasks/ExportTasksModal.jsx';
+import Pagination from '@/components/ui/Pagination.jsx';
 import { List as ListIcon } from 'lucide-react';
 import { cn } from '@/lib/classNames.js';
 
@@ -44,8 +45,6 @@ export default function TasksList() {
     const cur = filters.sort;
     setFilter('sort', cur === key ? `-${key}` : cur === `-${key}` ? '' : key);
   };
-
-  const page = Number(filters.page || 1);
 
   return (
     <>
@@ -159,28 +158,16 @@ export default function TasksList() {
         )}
       </Card>
 
-      {pagination && pagination.totalPages > 1 && (
-        <div className="mt-4 flex items-center justify-between text-sm text-gray-500">
-          <span>
-            Page {pagination.page} of {pagination.totalPages} · {pagination.total} tasks
-          </span>
-          <div className="flex gap-2">
-            <button
-              disabled={!pagination.hasPrevPage}
-              onClick={() => setFilter('page', String(page - 1))}
-              className="flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-1.5 disabled:opacity-40 dark:border-gray-700"
-            >
-              <ChevronLeft className="h-4 w-4" /> Prev
-            </button>
-            <button
-              disabled={!pagination.hasNextPage}
-              onClick={() => setFilter('page', String(page + 1))}
-              className="flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-1.5 disabled:opacity-40 dark:border-gray-700"
-            >
-              Next <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
+      {pagination && (
+        <Pagination
+          page={pagination.page}
+          pageSize={Number(filters.limit) || 25}
+          total={pagination.total}
+          totalPages={pagination.totalPages}
+          onChange={(p) => setFilter('page', String(p))}
+          onPageSizeChange={(n) => setFilter('limit', String(n))}
+          label="tasks"
+        />
       )}
 
       {addOpen && <TaskFormModal open onClose={() => setAddOpen(false)} />}

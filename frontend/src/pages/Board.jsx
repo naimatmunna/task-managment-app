@@ -42,6 +42,12 @@ import { cn } from '@/lib/classNames.js';
 
 const normAssignee = (a) => (a ? { name: a.name, avatar: a.avatar?.url } : null);
 
+// A Kanban board isn't paged as a whole — instead each column renders a capped
+// window of cards and reveals more on demand. This keeps the DOM (and drag
+// bookkeeping) light on large boards; the same idea scales to server-side
+// per-column cursors + virtualization (see the notes accompanying this change).
+const COLUMN_PAGE = 20;
+
 // Keep droppables measured continuously so cross-column / empty-column drops
 // stay reliable as the layout shifts mid-drag.
 const measuring = { droppable: { strategy: MeasuringStrategy.Always } };
@@ -76,12 +82,15 @@ function SortableCard({ task, onOpen }) {
   );
 }
 
-function Column({ column, tasks, onOpen, onAdd }) {
+function Column({ column, tasks, visible, onShowMore, onOpen, onAdd }) {
   // The droppable id IS the status key, so hovering the column body/empty area
   // resolves straight to the column.
   const { setNodeRef, isOver } = useDroppable({ id: column.key });
   const accent = STATUS_META[column.key]?.color;
-  const items = useMemo(() => tasks.map((t) => t.id), [tasks]);
+  // Only render a window of the column; hidden cards load on "Show more".
+  const shown = useMemo(() => tasks.slice(0, visible), [tasks, visible]);
+  const hidden = tasks.length - shown.length;
+  const items = useMemo(() => shown.map((t) => t.id), [shown]);
   return (
     <div
       className={cn(
@@ -111,9 +120,17 @@ function Column({ column, tasks, onOpen, onAdd }) {
       {/* setNodeRef is on the scroll body so the whole column area is a drop target. */}
       <SortableContext id={column.key} items={items} strategy={verticalListSortingStrategy}>
         <div ref={setNodeRef} className="flex min-h-[80px] flex-1 flex-col gap-2 px-2 pb-3">
-          {tasks.map((t) => (
+          {shown.map((t) => (
             <SortableCard key={t.id} task={t} onOpen={onOpen} />
           ))}
+          {hidden > 0 && (
+            <button
+              onClick={() => onShowMore(column.key)}
+              className="mt-1 rounded-xl border border-dashed border-gray-300 py-2 text-xs font-medium text-gray-500 transition hover:border-brand-400 hover:text-brand-600 dark:border-white/10 dark:text-gray-400"
+            >
+              Show {Math.min(COLUMN_PAGE, hidden)} more · {hidden} hidden
+            </button>
+          )}
           {tasks.length === 0 && (
             <div
               className={cn(
@@ -141,6 +158,12 @@ export default function Board() {
   const [activeId, setActiveId] = useState(null);
   const [addStatus, setAddStatus] = useState(null);
   const [openTaskId, setOpenTaskId] = useState(null);
+  const [visible, setVisible] = useState({}); // status -> rendered card count
+
+  const showMore = useCallback(
+    (key) => setVisible((v) => ({ ...v, [key]: (v[key] || COLUMN_PAGE) + COLUMN_PAGE })),
+    [],
+  );
 
   const lastOverId = useRef(null);
   const recentlyMovedToNewColumn = useRef(false);
@@ -362,6 +385,8 @@ export default function Board() {
                 key={column.key}
                 column={column}
                 tasks={columns[column.key] || []}
+                visible={visible[column.key] || COLUMN_PAGE}
+                onShowMore={showMore}
                 onOpen={setOpenTaskId}
                 onAdd={setAddStatus}
               />

@@ -15,7 +15,10 @@ export default function TaskFormModal({ open, onClose, defaultStatus = 'todo' })
   const { members, teams } = useDirectory();
   const [create, { isLoading }] = useCreateTaskMutation();
 
-  const [form, setForm] = useState({
+  // Lazy initializer so the form always opens clean. Only `status` is seeded
+  // (from the column it opened on); assignee, team and due date stay empty —
+  // a new task should not silently inherit today's date or the first team.
+  const [form, setForm] = useState(() => ({
     title: '',
     description: '',
     status: defaultStatus,
@@ -24,7 +27,7 @@ export default function TaskFormModal({ open, onClose, defaultStatus = 'todo' })
     teamId: '',
     dueDate: '',
     labels: '',
-  });
+  }));
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
   const onSubmit = async (e) => {
@@ -52,7 +55,9 @@ export default function TaskFormModal({ open, onClose, defaultStatus = 'todo' })
 
   return (
     <Modal open={open} onClose={onClose} title="New task">
-      <form onSubmit={onSubmit} className="space-y-3">
+      {/* autoComplete off so the browser doesn't autofill the Team/Assignee
+          selects or any field with stale values. */}
+      <form onSubmit={onSubmit} className="space-y-3" autoComplete="off">
         <Input autoFocus placeholder="Task title" value={form.title} onChange={set('title')} />
         <textarea
           placeholder="Description (optional)"
@@ -76,7 +81,7 @@ export default function TaskFormModal({ open, onClose, defaultStatus = 'todo' })
               </option>
             ))}
           </Select>
-          <Select label="Assignee" value={form.assigneeId} onChange={set('assigneeId')}>
+          <Select label="Assignee" value={form.assigneeId} onChange={set('assigneeId')} autoComplete="off">
             <option value="">Unassigned</option>
             {members.map((m) => (
               <option key={m.id} value={m.id}>
@@ -84,7 +89,7 @@ export default function TaskFormModal({ open, onClose, defaultStatus = 'todo' })
               </option>
             ))}
           </Select>
-          <Select label="Team" value={form.teamId} onChange={set('teamId')}>
+          <Select label="Team" value={form.teamId} onChange={set('teamId')} autoComplete="off">
             <option value="">No team</option>
             {teams.map((t) => (
               <option key={t.id} value={t.id}>

@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import toast from 'react-hot-toast';
-import { UserPlus, Trash2, MailPlus } from 'lucide-react';
+import { UserPlus, Trash2, MailPlus, Search } from 'lucide-react';
 import { selectOnlineIds } from '@/features/presence/presenceSlice.js';
 import {
   useMembersQuery,
@@ -29,6 +29,8 @@ import Badge from '@/components/ui/Badge.jsx';
 import Avatar from '@/components/ui/Avatar.jsx';
 import EmptyState from '@/components/ui/EmptyState.jsx';
 import Skeleton from '@/components/ui/Skeleton.jsx';
+import Pagination from '@/components/ui/Pagination.jsx';
+import { useClientPagination } from '@/hooks/useClientPagination.js';
 
 const inviteSchema = z.object({
   email: z.string().email('Enter a valid email'),
@@ -104,6 +106,18 @@ export default function Members() {
     [members, onlineSet],
   );
 
+  const [search, setSearch] = useState('');
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return members || [];
+    return (members || []).filter((m) => {
+      const name = (m.userId?.name || '').toLowerCase();
+      const email = (m.userId?.email || m.invitedEmail || '').toLowerCase();
+      return name.includes(q) || email.includes(q) || m.role.includes(q);
+    });
+  }, [members, search]);
+  const pag = useClientPagination(filtered, 10);
+
   const onRole = async (id, role) => {
     try {
       await updateRole({ id, role }).unwrap();
@@ -151,7 +165,13 @@ export default function Members() {
         ) : !members?.length ? (
           <EmptyState icon={UserPlus} title="No members yet" description="Invite teammates to collaborate." />
         ) : (
-          <div className="max-h-[calc(100vh-16rem)] overflow-auto">
+          <>
+            <div className="border-b border-gray-200/70 p-3 dark:border-white/10">
+              <div className="max-w-xs">
+                <Input icon={Search} placeholder="Search members…" value={search} onChange={(e) => setSearch(e.target.value)} />
+              </div>
+            </div>
+            <div className="max-h-[calc(100vh-16rem)] overflow-auto">
             <table className="w-full text-sm">
               <thead className="sticky top-0 z-10 border-b border-gray-200/70 bg-white text-left text-xs uppercase tracking-wide text-gray-400 [&_th]:bg-white dark:border-white/10 dark:bg-gray-900 dark:[&_th]:bg-gray-900">
                 <tr>
@@ -163,7 +183,14 @@ export default function Members() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-black/5 dark:divide-white/10">
-                {members.map((m) => {
+                {pag.pageItems.length === 0 && (
+                  <tr>
+                    <td colSpan={canManage ? 5 : 4} className="px-4 py-8 text-center text-sm text-gray-400">
+                      No members match “{search}”.
+                    </td>
+                  </tr>
+                )}
+                {pag.pageItems.map((m) => {
                   const person = m.userId;
                   const name = person?.name || m.invitedEmail;
                   const email = person?.email || m.invitedEmail;
@@ -232,9 +259,23 @@ export default function Members() {
                 })}
               </tbody>
             </table>
-          </div>
+            </div>
+          </>
         )}
       </Card>
+
+      {members?.length > 0 && (
+        <Pagination
+          page={pag.page}
+          pageSize={pag.pageSize}
+          total={pag.total}
+          totalPages={pag.totalPages}
+          onChange={pag.setPage}
+          onPageSizeChange={pag.setPageSize}
+          pageSizeOptions={[10, 25, 50]}
+          label="members"
+        />
+      )}
 
       <InviteModal open={inviteOpen} onClose={() => setInviteOpen(false)} />
     </>
