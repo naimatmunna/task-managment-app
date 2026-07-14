@@ -21,6 +21,12 @@ export const taskApi = apiSlice.injectEndpoints({
       transformResponse: (r) => ({ tasks: r.data.tasks, meta: r.meta }),
       providesTags: ['Task'],
     }),
+    // Ids of every task matching a filter — powers "select all N matching".
+    taskIds: builder.query({
+      query: (filters) => ({ url: '/tasks/ids', params: toParams(filters) }),
+      transformResponse: (r) => r.data.ids,
+      providesTags: ['Task'],
+    }),
     task: builder.query({
       query: (id) => `/tasks/${id}`,
       transformResponse: (r) => r.data.task,
@@ -93,6 +99,7 @@ export const taskApi = apiSlice.injectEndpoints({
 export const {
   useBoardQuery,
   useTaskListQuery,
+  useLazyTaskIdsQuery,
   useTaskQuery,
   useCreateTaskMutation,
   useUpdateTaskMutation,

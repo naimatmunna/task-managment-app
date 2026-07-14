@@ -16,8 +16,12 @@ export const getRelease = catchAsync(async (req, res) => {
 });
 
 export const createRelease = catchAsync(async (req, res) => {
-  const releaseNote = await releaseService.create(req.orgId, req.user.id, req.body);
-  return ApiResponse.created(res, { message: 'Release note generated', data: { releaseNote } });
+  const { note, result } = await releaseService.create(req.orgId, req.user.id, req.body);
+  const message =
+    result.skipped > 0
+      ? `Release note generated · ${result.skipped} selected task${result.skipped > 1 ? 's' : ''} could not be added (deleted or no longer accessible).`
+      : 'Release note generated';
+  return ApiResponse.created(res, { message, data: { releaseNote: note, result } });
 });
 
 export const updateRelease = catchAsync(async (req, res) => {

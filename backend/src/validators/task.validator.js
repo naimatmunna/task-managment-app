@@ -91,6 +91,8 @@ export const listTasksSchema = {
     sort: z.string().optional(),
     dueBefore: z.string().optional(),
     dueAfter: z.string().optional(),
+    completedBefore: z.string().optional(),
+    completedAfter: z.string().optional(),
     overdue: z.string().optional(),
   }),
 };

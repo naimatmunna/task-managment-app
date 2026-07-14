@@ -14,6 +14,11 @@ export const boardTasks = catchAsync(async (req, res) => {
   return ApiResponse.send(res, { data: { tasks } });
 });
 
+export const listTaskIds = catchAsync(async (req, res) => {
+  const ids = await taskService.listIds(req.orgId, req.validatedQuery);
+  return ApiResponse.send(res, { data: { ids }, meta: { total: ids.length } });
+});
+
 export const exportTasks = catchAsync(async (req, res) => {
   const { format, scopeLabel, ...filters } = req.validatedQuery;
   const { org, tasks } = await taskExportService.gather(req.orgId, filters);

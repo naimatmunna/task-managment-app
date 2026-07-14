@@ -32,6 +32,10 @@ const releaseNoteSchema = new Schema(
     details: { type: String, default: '', maxlength: 8000 },
     dateFrom: { type: Date, required: true },
     dateTo: { type: Date, required: true },
+    // The explicit set of tasks the user selected for this release. Used to
+    // re-take a *stable* snapshot on regenerate (legacy notes without this fall
+    // back to re-gathering the whole date range).
+    taskIds: { type: [{ type: Schema.Types.ObjectId, ref: 'Task' }], default: [] },
     tasks: { type: [snapshotSchema], default: [] },
     summary: {
       total: { type: Number, default: 0 },

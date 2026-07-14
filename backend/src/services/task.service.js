@@ -72,7 +72,20 @@ class TaskService {
       if (q.dueBefore) due.$lte = new Date(q.dueBefore);
       if (Object.keys(due).length) filter.dueDate = due;
     }
+    // Completion window — used by the release-note candidate picker (a release
+    // groups tasks by when they were *completed*).
+    const completed = {};
+    if (q.completedAfter) completed.$gte = new Date(q.completedAfter);
+    if (q.completedBefore) completed.$lte = new Date(q.completedBefore);
+    if (Object.keys(completed).length) filter.completedAt = completed;
     return filter;
+  }
+
+  /** Ids of every task matching a filter (org-scoped) — powers "select all matching". */
+  async listIds(orgId, q = {}) {
+    const filter = this.buildFilter(orgId, q);
+    const rows = await taskRepository.model.find(filter).select('_id').lean().exec();
+    return rows.map((r) => String(r._id));
   }
 
   /** Paginated, sortable list (List view). */

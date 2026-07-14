@@ -32,6 +32,7 @@ const upload = multer({
 router.use(authenticate, resolveOrg);
 
 router.get('/', validate(listTasksSchema), taskController.listTasks);
+router.get('/ids', validate(listTasksSchema), taskController.listTaskIds);
 router.get('/board', validate(listTasksSchema), taskController.boardTasks);
 router.get('/export', validate(exportTasksSchema), taskController.exportTasks);
 router.post('/', validate(createTaskSchema), taskController.createTask);

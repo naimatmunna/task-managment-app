@@ -55,19 +55,9 @@ class ReleaseService {
     return `Release — ${fmtRange(from, to)}`;
   }
 
-  /** Snapshot of tasks completed within [from, to]. */
-  async gather(orgId, from, to) {
-    const rows = await taskRepository.findAll(
-      { organizationId: orgId, completedAt: { $gte: from, $lte: to } },
-      {
-        sort: { completedAt: -1 },
-        populate: [
-          { path: 'assigneeId', select: 'name' },
-          { path: 'teamId', select: 'name' },
-        ],
-      },
-    );
-    return rows.map((t) => ({
+  /** Freeze one populated task document into a stored snapshot row. */
+  snapshot(t) {
+    return {
       taskId: t.id,
       title: t.title,
       status: t.status,
@@ -78,7 +68,47 @@ class ReleaseService {
       completedAt: t.completedAt,
       dueDate: t.dueDate,
       createdAt: t.createdAt,
-    }));
+    };
+  }
+
+  populate() {
+    return [
+      { path: 'assigneeId', select: 'name' },
+      { path: 'teamId', select: 'name' },
+    ];
+  }
+
+  /** Snapshot of tasks completed within [from, to] (legacy range-based path). */
+  async gather(orgId, from, to) {
+    const rows = await taskRepository.findAll(
+      { organizationId: orgId, completedAt: { $gte: from, $lte: to } },
+      { sort: { completedAt: -1 }, populate: this.populate() },
+    );
+    return rows.map((t) => this.snapshot(t));
+  }
+
+  /**
+   * Snapshot only the explicitly-selected task ids. The backend is the source of
+   * truth: it dedupes, and re-validates that each id still belongs to this org
+   * and is still completed (a task un-completed / deleted / moved after the user
+   * selected it is silently dropped and reported back as skipped). Never trusts
+   * the ids from the client blindly.
+   */
+  async gatherByIds(orgId, ids = []) {
+    const requested = [...new Set(ids.map((id) => String(id)))];
+    if (requested.length === 0) return { tasks: [], requested: 0, added: 0, skipped: [] };
+
+    const rows = await taskRepository.findAll(
+      { _id: { $in: requested }, organizationId: orgId, completedAt: { $ne: null } },
+      { sort: { completedAt: -1 }, populate: this.populate() },
+    );
+    const found = new Set(rows.map((r) => String(r.id)));
+    return {
+      tasks: rows.map((t) => this.snapshot(t)),
+      requested: requested.length,
+      added: rows.length,
+      skipped: requested.filter((id) => !found.has(id)),
+    };
   }
 
   summarize(tasks) {
@@ -89,7 +119,7 @@ class ReleaseService {
     return { total: tasks.length, byStatus };
   }
 
-  async create(orgId, userId, { from, to, version, title, details }) {
+  async create(orgId, userId, { from, to, taskIds, version, title, details }) {
     const dateFrom = new Date(from);
     const dateTo = new Date(to);
     if (Number.isNaN(dateFrom.getTime()) || Number.isNaN(dateTo.getTime()) || dateFrom > dateTo) {
@@ -98,18 +128,43 @@ class ReleaseService {
     // Make the range inclusive of both whole days.
     dateFrom.setHours(0, 0, 0, 0);
     dateTo.setHours(23, 59, 59, 999);
-    const tasks = await this.gather(orgId, dateFrom, dateTo);
-    return releaseNoteRepository.create({
+
+    let tasks;
+    let result;
+    // `selectedIds` is stored only for an explicit selection, so a range-based
+    // note keeps regenerating from its date range (empty taskIds → legacy path).
+    let selectedIds = [];
+    if (Array.isArray(taskIds)) {
+      // Explicit selection: add only the tasks the user chose (validated).
+      if (taskIds.length === 0) {
+        throw ApiError.badRequest('Select at least one task before creating the release', { code: 'NO_TASKS' });
+      }
+      const gathered = await this.gatherByIds(orgId, taskIds);
+      if (gathered.added === 0) {
+        throw ApiError.badRequest('None of the selected tasks could be added — they were deleted or are no longer accessible.', { code: 'NO_VALID_TASKS' });
+      }
+      tasks = gathered.tasks;
+      selectedIds = tasks.map((t) => t.taskId);
+      result = { requested: gathered.requested, added: gathered.added, skipped: gathered.skipped.length };
+    } else {
+      // Legacy path: everything completed in the range.
+      tasks = await this.gather(orgId, dateFrom, dateTo);
+      result = { requested: tasks.length, added: tasks.length, skipped: 0 };
+    }
+
+    const note = await releaseNoteRepository.create({
       organizationId: orgId,
       title: title?.trim() || this.autoTitle(dateFrom, dateTo),
       version: version?.trim() || '',
       details: details || '',
       dateFrom,
       dateTo,
+      taskIds: selectedIds,
       tasks,
       summary: this.summarize(tasks),
       createdById: userId,
     });
+    return { note, result };
   }
 
   list(orgId) {
@@ -131,11 +186,21 @@ class ReleaseService {
     return note;
   }
 
-  /** Re-take the task snapshot for the note's stored date range. */
+  /**
+   * Re-take the task snapshot. If the note was built from an explicit selection,
+   * re-snapshot exactly those tasks (so the note stays the same set, only fresher
+   * data); otherwise fall back to re-gathering the stored date range.
+   */
   async regenerate(orgId, id) {
     const note = await this.get(orgId, id);
-    const tasks = await this.gather(orgId, note.dateFrom, note.dateTo);
+    const isSelection = note.taskIds?.length > 0;
+    const tasks = isSelection
+      ? (await this.gatherByIds(orgId, note.taskIds)).tasks
+      : await this.gather(orgId, note.dateFrom, note.dateTo);
     note.tasks = tasks;
+    // Keep a selection note pinned to its (still-valid) selection; leave a
+    // range-based note range-based so it keeps re-gathering the window.
+    if (isSelection) note.taskIds = tasks.map((t) => t.taskId);
     note.summary = this.summarize(tasks);
     await note.save();
     return note;

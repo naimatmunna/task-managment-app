@@ -25,6 +25,7 @@ import PageHeader from '@/components/app/PageHeader.jsx';
 import PageMeta from '@/components/common/PageMeta.jsx';
 import Card from '@/components/ui/Card.jsx';
 import Button from '@/components/ui/Button.jsx';
+import IconButton from '@/components/ui/IconButton.jsx';
 import Skeleton from '@/components/ui/Skeleton.jsx';
 import EmptyState from '@/components/ui/EmptyState.jsx';
 import Pagination from '@/components/ui/Pagination.jsx';
@@ -34,19 +35,6 @@ import EditReleaseModal from '@/components/releases/EditReleaseModal.jsx';
 import ReleaseViewPanel from '@/components/releases/ReleaseViewPanel.jsx';
 
 const fmt = (d) => (d ? format(new Date(d), 'MMM d, yyyy') : '—');
-
-function IconButton({ icon: Icon, label, onClick, danger, className }) {
-  return (
-    <button
-      onClick={onClick}
-      title={label}
-      aria-label={label}
-      className={`rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 ${danger ? 'hover:!bg-red-50 hover:!text-red-600 dark:hover:!bg-red-900/20' : ''} ${className || ''}`}
-    >
-      <Icon className="h-4 w-4" />
-    </button>
-  );
-}
 
 export default function ReleaseNotes() {
   const { data: notes, isLoading } = useReleaseNotesQuery();
@@ -144,14 +132,14 @@ export default function ReleaseNotes() {
               </button>
 
               <div className="flex items-center gap-0.5">
-                <IconButton icon={Eye} label="View" onClick={() => setViewId(note.id)} />
+                <IconButton icon={Eye} label="View release notes" onClick={() => setViewId(note.id)} />
                 <IconButton icon={FileText} label="Download PDF" onClick={() => onDownload(note, 'pdf')} />
                 <IconButton icon={FileType2} label="Download Word" onClick={() => onDownload(note, 'docx')} />
                 {canManage && (
                   <>
-                    <IconButton icon={Pencil} label="Edit" onClick={() => setEditNote(note)} />
-                    <IconButton icon={RefreshCw} label="Regenerate" onClick={() => onRegenerate(note)} />
-                    <IconButton icon={Trash2} label="Delete" danger onClick={() => onDelete(note)} />
+                    <IconButton icon={Pencil} label="Edit release" onClick={() => setEditNote(note)} />
+                    <IconButton icon={RefreshCw} label="Regenerate release notes" onClick={() => onRegenerate(note)} />
+                    <IconButton icon={Trash2} label="Delete release" variant="danger" onClick={() => onDelete(note)} />
                   </>
                 )}
               </div>
